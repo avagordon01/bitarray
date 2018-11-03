@@ -39,7 +39,7 @@ public:
     size_t count() const {
         size_t count = 0;
         for (auto& x: data)
-            count += __builtin_popcount(x);
+            count += __builtin_popcountll(x);
         return count;
     };
     size_t size() const {
