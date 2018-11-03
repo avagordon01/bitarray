@@ -45,6 +45,20 @@ public:
     size_t size() const {
         return N;
     };
+    size_t count_trailing_zeros() const {
+        for (size_t i = 0; i < CHUNKS; i++) {
+            if (data[i] != 0)
+                return i * BITS_PER_CHUNK + __builtin_ctzll(data[i]);
+        }
+        return std::numeric_limits<T>::max();
+    };
+    size_t count_leading_zeros() const {
+        for (size_t i = CHUNKS; i--;) {
+            if (data[i] != 0)
+                return i * BITS_PER_CHUNK + __builtin_clzll(data[i]);
+        }
+        return std::numeric_limits<T>::max();
+    };
     friend bool operator==(const self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < CHUNKS; i++)
             if (lhs.data[i] != rhs.data[i])

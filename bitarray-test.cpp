@@ -17,5 +17,8 @@ int main() {
 
     assert((T{1, 2, 3}).count() == 4);
 
+    assert((T{0, 1 << 10, 0}).count_trailing_zeros() == 64 + 10);
+    assert((T{0, 1 << 10, 0}).count_leading_zeros() == 64 + 63 - 10);
+
     return 0;
 }
