@@ -1,19 +1,22 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <iostream>
 
 template <size_t N, typename T = uint_fast32_t>
 class bitarray {
-public:
     static_assert(std::numeric_limits<T>::is_integer, "storage type must be an integer type");
 
     static constexpr size_t BITS_PER_CHUNK = std::numeric_limits<T>::digits;
     static constexpr size_t CHUNKS = 1 + (N - 1) / BITS_PER_CHUNK;
 
     std::array<T, CHUNKS> data;
+public:
 
-    bitarray() : data({0}) {};
+    bitarray(std::initializer_list<T> list) {
+        std::uninitialized_copy(list.begin(), list.begin() + CHUNKS, data.begin());
+    }
     bool all() const {
         for (auto& x: data)
             if (x != ~0LLU)
