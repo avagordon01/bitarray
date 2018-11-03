@@ -6,6 +6,7 @@
 
 template <size_t N, typename T = uint_fast32_t>
 class bitarray {
+    using self_type = bitarray<N, T>;
     static_assert(std::numeric_limits<T>::is_integer, "storage type must be an integer type");
 
     static constexpr size_t BITS_PER_CHUNK = std::numeric_limits<T>::digits;
@@ -44,13 +45,13 @@ public:
     size_t size() const {
         return N;
     };
-    friend bool operator==(const bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
+    friend bool operator==(const self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < CHUNKS; i++)
             if (lhs.data[i] != rhs.data[i])
                 return false;
         return true;
     };
-    friend bool operator!=(const bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
+    friend bool operator!=(const self_type& lhs, const self_type& rhs) {
         return !(lhs == rhs);
     };
     constexpr bool operator[](size_t pos) const {
@@ -81,34 +82,34 @@ public:
     void flip(size_t pos) {
         data[pos / BITS_PER_CHUNK] ^= 1LLU << (pos % BITS_PER_CHUNK);
     };
-    friend void operator~(bitarray<N, T>& lhs) {
+    friend void operator~(self_type& lhs) {
         for (auto& x: lhs.data)
             x = ~x;
     };
-    friend void operator&=(bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
+    friend void operator&=(self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < CHUNKS; i++)
             lhs.data[i] &= rhs.data[i];
     };
-    friend void operator|=(bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
+    friend void operator|=(self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < CHUNKS; i++)
             lhs.data[i] |= rhs.data[i];
     };
-    friend void operator^=(bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
+    friend void operator^=(self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < CHUNKS; i++)
             lhs.data[i] ^= rhs.data[i];
     };
-    friend void operator&(bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
-        bitarray<N, T> x = lhs;
+    friend void operator&(self_type& lhs, const self_type& rhs) {
+        self_type x = lhs;
         x &= rhs;
         return x;
     };
-    friend void operator|(bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
-        bitarray<N, T> x = lhs;
+    friend void operator|(self_type& lhs, const self_type& rhs) {
+        self_type x = lhs;
         x |= rhs;
         return x;
     };
-    friend void operator^(bitarray<N, T>& lhs, const bitarray<N, T>& rhs) {
-        bitarray<N, T> x = lhs;
+    friend void operator^(self_type& lhs, const self_type& rhs) {
+        self_type x = lhs;
         x ^= rhs;
         return x;
     };
@@ -120,8 +121,8 @@ public:
         }
     };
     template <size_t Step, size_t Start>
-    static constexpr bitarray<N, T> mask() {
-        bitarray<N, T> x{};
+    static constexpr self_type mask() {
+        self_type x{};
         for (size_t i = Start; i < N; i += Step) {
             x.set(i);
         }
@@ -133,7 +134,7 @@ public:
         return x;
     }
     template <class CharT, class Traits>
-    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const bitarray<N, T>& x) {
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
         //FIXME decide what order the chunks should be stored in memory
         //currently the memory layout doesn't match this print
         for (size_t i = CHUNKS; i--;) {
