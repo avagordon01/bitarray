@@ -147,9 +147,17 @@ public:
         }
         return x;
     };
-    template <size_t Step, size_t Start>
-    static bitarray<N / Step, T> spread(bitarray<N / Step, T> x) {
-        //TODO
+    template <size_t Step, size_t Offset>
+    bitarray<N / Step, T> gather() {
+        //the output bit n comes from the input bit n*Step+Offset
+        static_assert(N % Step == 0, "gather: the bitset size should be an exact multiple of the spread size");
+        bitarray<N / Step, T> x;
+        //should loop over the input space instead of the output
+        for (size_t i = 0; i < CHUNKS; i++) {
+            //TODO cant have a runtime template parameter
+            T tmp = pext(data[i], mask<Step, Offset>());
+            x.data[i / Step] |= tmp << (i * BITS_PER_CHUNK / Step);
+        }
         return x;
     }
     template <class CharT, class Traits>
