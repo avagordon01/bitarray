@@ -134,6 +134,11 @@ public:
                 data[i] |= data[i + 1 + shift / BITS_PER_CHUNK] << (BITS_PER_CHUNK - shift % BITS_PER_CHUNK);
         }
     };
+    friend self_type operator>>(self_type&lhs, size_t shift) {
+        self_type x = lhs;
+        x >>= shift;
+        return x;
+    };
     template <size_t Step, size_t Start>
     static constexpr self_type mask() {
         self_type x{};
