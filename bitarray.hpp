@@ -75,7 +75,7 @@ public:
         for (auto& x: data)
             x = ~0LLU;
     };
-    void set(size_t pos, bool value = true) {
+    constexpr void set(size_t pos, bool value = true) {
         if (value) {
             data[pos / BITS_PER_CHUNK] |= 1LLU << (pos % BITS_PER_CHUNK);
         } else {
