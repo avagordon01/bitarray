@@ -148,18 +148,18 @@ public:
         return x;
     };
     template <size_t Step, size_t Offset>
-    bitarray<N / Step, T> gather() {
+    friend bitarray<N / Step, T> gather(const self_type& in) {
         //the output bit n comes from the input bit n*Step+Offset
         static_assert(N % Step == 0, "gather: the bitset size should be an exact multiple of the spread size");
-        bitarray<N / Step, T> x;
+        bitarray<N / Step, T> out{};
         //should loop over the input space instead of the output
         for (size_t i = 0; i < CHUNKS; i++) {
             //TODO cant have a runtime template parameter
-            T tmp = pext(data[i], mask<Step, Offset>());
-            x.data[i / Step] |= tmp << (i * BITS_PER_CHUNK / Step);
+            T tmp = _pext_u64(in.data[i], mask<Step, (i * BITS_PER_CHUNK) % Step>());
+            out.data[i / Step] |= tmp << (i * BITS_PER_CHUNK / Step);
         }
-        return x;
-    }
+        return out;
+    };
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
         //FIXME decide what order the chunks should be stored in memory
@@ -172,5 +172,5 @@ public:
             }
         }
         return os;
-    }
+    };
 };
