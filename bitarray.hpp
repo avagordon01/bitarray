@@ -33,7 +33,7 @@ private:
     void sanitize() {
         if constexpr (N % BITS_PER_CHUNK != 0) {
             size_t offset = N % BITS_PER_CHUNK;
-            data[CHUNKS - 1] &= ~((~zero()) << offset);
+            data.back() &= ~((~zero()) << offset);
         }
     };
 public:
