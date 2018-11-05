@@ -218,7 +218,7 @@ public:
     static constexpr T short_mask() {
         T x{0};
         for (size_t i = Start; i < BITS_PER_CHUNK; i += Step) {
-            x |= 1 << i;
+            x |= one() << i;
         }
         return x;
     };
