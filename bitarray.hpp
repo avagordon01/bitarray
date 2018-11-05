@@ -152,14 +152,53 @@ public:
         return x;
     };
     void operator<<=(size_t shift) {
-        sanitize();
+        size_t i;
+        for (i = CHUNKS - 1; i - shift / BITS_PER_CHUNK < CHUNKS; i--) {
+            data[i] = data[i - shift / BITS_PER_CHUNK] >> (shift % BITS_PER_CHUNK);
+            if (i + 1 + shift / BITS_PER_CHUNK < CHUNKS)
+                data[i] |= data[i + 1 + shift / BITS_PER_CHUNK] << (BITS_PER_CHUNK - shift % BITS_PER_CHUNK);
+        }
+        for (; i < CHUNKS; i--) {
+            data[i] = 0;
+        }
     };
+public:
+    template <typename G>
+    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T)) {
+        for (size_t i = 0; i < input.CHUNKS; i++) {
+            const T& x = input.data[i];
+            //TODO f should return a compile-time fixed number of words per input word
+            T t = f(x);
+            size_t start = G{}(i * input.BITS_PER_CHUNK);
+            size_t end = G{}((i + 1) * input.BITS_PER_CHUNK - 1);
+            size_t start_bit = start % output.BITS_PER_CHUNK;
+            size_t start_word = start / output.BITS_PER_CHUNK;
+            //size_t end_bit = end % output.BITS_PER_CHUNK;
+            size_t end_word = end / output.BITS_PER_CHUNK;
+            ssize_t bit_offset = start_bit;
+#pragma clang loop unroll(full)
+            for (size_t j = start_word; j <= end_word && j < output.CHUNKS; j++) {
+                if (bit_offset >= 0) {
+                    output.data[j] |=
+                        t << bit_offset;
+                } else {
+                    output.data[j] |=
+                        t >> -bit_offset;
+                }
+                bit_offset -= output.BITS_PER_CHUNK;
+            }
+        };
+    };
+public:
     void operator>>=(size_t shift) {
-        //FIXME this is wrong for non chunk aligned N
-        for (size_t i = 0; i + shift / BITS_PER_CHUNK < CHUNKS; i++) {
+        size_t i;
+        for (i = 0; i + shift / BITS_PER_CHUNK < CHUNKS; i++) {
             data[i] = data[i + shift / BITS_PER_CHUNK] >> (shift % BITS_PER_CHUNK);
             if (i + 1 + shift / BITS_PER_CHUNK < CHUNKS)
                 data[i] |= data[i + 1 + shift / BITS_PER_CHUNK] << (BITS_PER_CHUNK - shift % BITS_PER_CHUNK);
+        }
+        for (; i < CHUNKS; i++) {
+            data[i] = 0;
         }
     };
     friend self_type operator>>(self_type&lhs, size_t shift) {

@@ -2,6 +2,15 @@
 #include <cassert>
 #include <iostream>
 
+uint64_t f(uint64_t x) {
+    return x;
+};
+struct g {
+    size_t operator()(size_t offset) {
+        return offset + 1;
+    };
+};
+
 int main() {
     using T = bitarray<129>;
     assert((T{-1LLU, -1LLU, -1LLU}).all());
@@ -20,8 +29,10 @@ int main() {
     assert((T{0, 1 << 10, 0}).count_trailing_zeros() == 64 + 10);
     assert((T{0, 1 << 10, 0}).count_leading_zeros() == 64 + 63 - 10);
 
-    auto test = (bitarray<192>{0, 0, 0}).gather<2, 0>();
-    std::cout << test << std::endl;
+    bitarray<128> input{~0LLU, ~0LLU}, output{};
+    bitarray<128>::map<g>(input, output, f);
+    std::cout << input << std::endl;
+    std::cout << output << std::endl;
 
     return 0;
 }
