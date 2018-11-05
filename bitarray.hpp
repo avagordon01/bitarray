@@ -10,18 +10,18 @@ class bitarray {
     using self_type = bitarray<N, T>;
     static_assert(std::numeric_limits<T>::is_integer, "storage type must be an integer type");
 
-    static constexpr size_t BITS_PER_CHUNK = std::numeric_limits<T>::digits;
-    static constexpr size_t CHUNKS = 1 + (N - 1) / BITS_PER_CHUNK;
-    static_assert(CHUNKS * BITS_PER_CHUNK >= N, "oh no");
+    static constexpr size_t BITS_PER_WORD = std::numeric_limits<T>::digits;
+    static constexpr size_t WORDS = 1 + (N - 1) / BITS_PER_WORD;
+    static_assert(WORDS * BITS_PER_WORD >= N, "oh no");
 
 public:
-    std::array<T, CHUNKS> data;
+    std::array<T, WORDS> data;
 
     bitarray() {
         data.fill(zero());
     }
     bitarray(std::initializer_list<T> list) {
-        std::uninitialized_copy(list.begin(), list.begin() + CHUNKS, data.begin());
+        std::uninitialized_copy(list.begin(), list.begin() + WORDS, data.begin());
     }
 private:
     static constexpr T zero() {
@@ -31,14 +31,14 @@ private:
         return static_cast<T>(1);
     };
     void sanitize() {
-        if constexpr (N % BITS_PER_CHUNK != 0) {
-            size_t offset = N % BITS_PER_CHUNK;
+        if constexpr (N % BITS_PER_WORD != 0) {
+            size_t offset = N % BITS_PER_WORD;
             data.back() &= ~((~zero()) << offset);
         }
     };
 public:
     bool all() const {
-        //FIXME this is wrong for non chunk aligned N
+        //FIXME this is wrong for non word aligned N
         for (auto& x: data)
             if (x != ~zero())
                 return false;
@@ -66,22 +66,22 @@ public:
         return N;
     };
     size_t count_trailing_zeros() const {
-        for (size_t i = 0; i < CHUNKS; i++) {
+        for (size_t i = 0; i < WORDS; i++) {
             if (data[i] != 0)
-                return i * BITS_PER_CHUNK + __builtin_ctzll(data[i]);
+                return i * BITS_PER_WORD + __builtin_ctzll(data[i]);
         }
         return std::numeric_limits<T>::max();
     };
     size_t count_leading_zeros() const {
-        //FIXME this is wrong for non chunk aligned N
-        for (size_t i = CHUNKS; i--;) {
+        //FIXME this is wrong for non word aligned N
+        for (size_t i = WORDS; i--;) {
             if (data[i] != 0)
-                return i * BITS_PER_CHUNK + __builtin_clzll(data[i]);
+                return i * BITS_PER_WORD + __builtin_clzll(data[i]);
         }
         return std::numeric_limits<T>::max();
     };
     friend bool operator==(const self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < CHUNKS; i++)
+        for (size_t i = 0; i < WORDS; i++)
             if (lhs.data[i] != rhs.data[i])
                 return false;
         return true;
@@ -90,7 +90,7 @@ public:
         return !(lhs == rhs);
     };
     constexpr bool operator[](size_t pos) const {
-        return (data[pos / BITS_PER_CHUNK] >> (pos % BITS_PER_CHUNK)) & 1;
+        return (data[pos / BITS_PER_WORD] >> (pos % BITS_PER_WORD)) & 1;
     };
     void set() {
         for (auto& x: data)
@@ -99,9 +99,9 @@ public:
     };
     constexpr void set(size_t pos, bool value = true) {
         if (value) {
-            data[pos / BITS_PER_CHUNK] |= one() << (pos % BITS_PER_CHUNK);
+            data[pos / BITS_PER_WORD] |= one() << (pos % BITS_PER_WORD);
         } else {
-            data[pos / BITS_PER_CHUNK] &= ~(one() << (pos % BITS_PER_CHUNK));
+            data[pos / BITS_PER_WORD] &= ~(one() << (pos % BITS_PER_WORD));
         }
     };
     void reset() {
@@ -109,7 +109,7 @@ public:
             x = zero();
     };
     void reset(size_t pos) {
-        data[pos / BITS_PER_CHUNK] &= ~(one() << (pos % BITS_PER_CHUNK));
+        data[pos / BITS_PER_WORD] &= ~(one() << (pos % BITS_PER_WORD));
     };
     void flip() {
         for (auto& x: data)
@@ -117,7 +117,7 @@ public:
         sanitize();
     };
     void flip(size_t pos) {
-        data[pos / BITS_PER_CHUNK] ^= one() << (pos % BITS_PER_CHUNK);
+        data[pos / BITS_PER_WORD] ^= one() << (pos % BITS_PER_WORD);
     };
     friend void operator~(self_type& lhs) {
         for (auto& x: lhs.data)
@@ -125,15 +125,15 @@ public:
         lhs.sanitize();
     };
     friend void operator&=(self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < CHUNKS; i++)
+        for (size_t i = 0; i < WORDS; i++)
             lhs.data[i] &= rhs.data[i];
     };
     friend void operator|=(self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < CHUNKS; i++)
+        for (size_t i = 0; i < WORDS; i++)
             lhs.data[i] |= rhs.data[i];
     };
     friend void operator^=(self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < CHUNKS; i++)
+        for (size_t i = 0; i < WORDS; i++)
             lhs.data[i] ^= rhs.data[i];
     };
     friend void operator&(self_type& lhs, const self_type& rhs) {
@@ -153,31 +153,31 @@ public:
     };
     void operator<<=(size_t shift) {
         size_t i;
-        for (i = CHUNKS - 1; i - shift / BITS_PER_CHUNK < CHUNKS; i--) {
-            data[i] = data[i - shift / BITS_PER_CHUNK] >> (shift % BITS_PER_CHUNK);
-            if (i + 1 + shift / BITS_PER_CHUNK < CHUNKS)
-                data[i] |= data[i + 1 + shift / BITS_PER_CHUNK] << (BITS_PER_CHUNK - shift % BITS_PER_CHUNK);
+        for (i = WORDS - 1; i - shift / BITS_PER_WORD < WORDS; i--) {
+            data[i] = data[i - shift / BITS_PER_WORD] >> (shift % BITS_PER_WORD);
+            if (i + 1 + shift / BITS_PER_WORD < WORDS)
+                data[i] |= data[i + 1 + shift / BITS_PER_WORD] << (BITS_PER_WORD - shift % BITS_PER_WORD);
         }
-        for (; i < CHUNKS; i--) {
+        for (; i < WORDS; i--) {
             data[i] = 0;
         }
     };
 public:
     template <typename G>
     static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T)) {
-        for (size_t i = 0; i < input.CHUNKS; i++) {
+        for (size_t i = 0; i < input.WORDS; i++) {
             const T& x = input.data[i];
             //TODO f should return a compile-time fixed number of words per input word
             T t = f(x);
-            size_t start = G{}(i * input.BITS_PER_CHUNK);
-            size_t end = G{}((i + 1) * input.BITS_PER_CHUNK - 1);
-            size_t start_bit = start % output.BITS_PER_CHUNK;
-            size_t start_word = start / output.BITS_PER_CHUNK;
-            //size_t end_bit = end % output.BITS_PER_CHUNK;
-            size_t end_word = end / output.BITS_PER_CHUNK;
+            size_t start = G{}(i * input.BITS_PER_WORD);
+            size_t end = G{}((i + 1) * input.BITS_PER_WORD - 1);
+            size_t start_bit = start % output.BITS_PER_WORD;
+            size_t start_word = start / output.BITS_PER_WORD;
+            //size_t end_bit = end % output.BITS_PER_WORD;
+            size_t end_word = end / output.BITS_PER_WORD;
             ssize_t bit_offset = start_bit;
 #pragma clang loop unroll(full)
-            for (size_t j = start_word; j <= end_word && j < output.CHUNKS; j++) {
+            for (size_t j = start_word; j <= end_word && j < output.WORDS; j++) {
                 if (bit_offset >= 0) {
                     output.data[j] |=
                         t << bit_offset;
@@ -185,19 +185,19 @@ public:
                     output.data[j] |=
                         t >> -bit_offset;
                 }
-                bit_offset -= output.BITS_PER_CHUNK;
+                bit_offset -= output.BITS_PER_WORD;
             }
         };
     };
 public:
     void operator>>=(size_t shift) {
         size_t i;
-        for (i = 0; i + shift / BITS_PER_CHUNK < CHUNKS; i++) {
-            data[i] = data[i + shift / BITS_PER_CHUNK] >> (shift % BITS_PER_CHUNK);
-            if (i + 1 + shift / BITS_PER_CHUNK < CHUNKS)
-                data[i] |= data[i + 1 + shift / BITS_PER_CHUNK] << (BITS_PER_CHUNK - shift % BITS_PER_CHUNK);
+        for (i = 0; i + shift / BITS_PER_WORD < WORDS; i++) {
+            data[i] = data[i + shift / BITS_PER_WORD] >> (shift % BITS_PER_WORD);
+            if (i + 1 + shift / BITS_PER_WORD < WORDS)
+                data[i] |= data[i + 1 + shift / BITS_PER_WORD] << (BITS_PER_WORD - shift % BITS_PER_WORD);
         }
-        for (; i < CHUNKS; i++) {
+        for (; i < WORDS; i++) {
             data[i] = 0;
         }
     };
@@ -217,7 +217,7 @@ public:
     template <size_t Step, size_t Start>
     static constexpr T short_mask() {
         T x{0};
-        for (size_t i = Start; i < BITS_PER_CHUNK; i += Step) {
+        for (size_t i = Start; i < BITS_PER_WORD; i += Step) {
             x |= one() << i;
         }
         return x;
@@ -234,7 +234,7 @@ public:
     };
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
-        //FIXME decide what order the chunks should be stored in memory
+        //FIXME decide what order the words should be stored in memory
         //currently the memory layout doesn't match this print
         for (size_t i = N; i--;) {
             bool bit = x[i];
