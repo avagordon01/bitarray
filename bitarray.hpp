@@ -222,18 +222,15 @@ public:
         }
         return x;
     };
-    template <size_t Step, size_t Offset>
-    bitarray<N / Step, T> gather() {
-        //the output bit n comes from the input bit n*Step+Offset
-        static_assert(N % Step == 0, "gather: the bitset size should be an exact multiple of the spread size");
-        bitarray<N / Step, T> out{};
-        //should loop over the input space instead of the output
-        for (size_t i = 0; i < CHUNKS; i++) {
-            T mask = short_mask<Step, 0>() >> (Offset + (i * BITS_PER_CHUNK)) % Step;
-            T tmp = _pext_u64(data[i], mask);
-            out.data[i / Step] |= tmp << (i * BITS_PER_CHUNK / Step);
-        }
-        return out;
+    template <size_t Step>
+    bitarray<N, T> interleave(std::array<bitarray<N / Step, T>, Step> inputs) {
+        bitarray<N, T> output{};
+        return output;
+    };
+    template <size_t Step>
+    std::array<bitarray<N / Step, T>, Step> deinterleave(bitarray<N, T> input) {
+        std::array<bitarray<N / Step, T>, Step> outputs{};
+        return outputs;
     };
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
