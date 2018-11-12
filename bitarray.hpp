@@ -164,7 +164,8 @@ public:
         //should loop over the input space instead of the output
         for (size_t i = 0; i < CHUNKS; i++) {
             //TODO cant have a runtime template parameter
-            T tmp = _pext_u64(data[i], this->short_mask<Step, (0 * BITS_PER_CHUNK) % Step>());
+            //0 on the next line should be i
+            T tmp = _pext_u64(data[i], short_mask<Step, (0 * BITS_PER_CHUNK) % Step>());
             out.data[i / Step] |= tmp << (i * BITS_PER_CHUNK / Step);
         }
         return out;
