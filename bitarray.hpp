@@ -3,6 +3,7 @@
 #include <limits>
 #include <memory>
 #include <iostream>
+#include <immintrin.h>
 
 template <size_t N, typename T = uint_fast32_t>
 class bitarray {
