@@ -148,6 +148,14 @@ public:
         }
         return x;
     };
+    template <size_t Step, size_t Start>
+    static constexpr T short_mask() {
+        T x{0};
+        for (size_t i = Start; i < BITS_PER_CHUNK; i += Step) {
+            x |= 1 << i;
+        }
+        return x;
+    };
     template <size_t Step, size_t Offset>
     bitarray<N / Step, T> gather() {
         //the output bit n comes from the input bit n*Step+Offset
@@ -156,7 +164,7 @@ public:
         //should loop over the input space instead of the output
         for (size_t i = 0; i < CHUNKS; i++) {
             //TODO cant have a runtime template parameter
-            T tmp = _pext_u64(data[i], mask<Step, (i * BITS_PER_CHUNK) % Step>());
+            T tmp = _pext_u64(data[i], this->short_mask<Step, (0 * BITS_PER_CHUNK) % Step>());
             out.data[i / Step] |= tmp << (i * BITS_PER_CHUNK / Step);
         }
         return out;
