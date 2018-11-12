@@ -13,8 +13,8 @@ class bitarray {
     static constexpr size_t BITS_PER_CHUNK = std::numeric_limits<T>::digits;
     static constexpr size_t CHUNKS = 1 + (N - 1) / BITS_PER_CHUNK;
 
-    std::array<T, CHUNKS> data;
 public:
+    std::array<T, CHUNKS> data;
 
     bitarray(std::initializer_list<T> list) {
         std::uninitialized_copy(list.begin(), list.begin() + CHUNKS, data.begin());
