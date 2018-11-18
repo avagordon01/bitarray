@@ -177,12 +177,9 @@ public:
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
         //FIXME decide what order the chunks should be stored in memory
         //currently the memory layout doesn't match this print
-        for (size_t i = CHUNKS; i--;) {
-            const T& chunk = x.data[i];
-            for (size_t j = BITS_PER_CHUNK; j--;) {
-                bool bit = (chunk >> j) & 1;
-                os << (bit ? '1' : '0');
-            }
+        for (size_t i = N; i--;) {
+            bool bit = x[i];
+            os << (bit ? '1' : '0');
         }
         return os;
     };
