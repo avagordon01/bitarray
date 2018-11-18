@@ -30,6 +30,12 @@ private:
     static constexpr T one() {
         return static_cast<T>(1);
     };
+    void sanitize() {
+        if constexpr (N % BITS_PER_CHUNK != 0) {
+            size_t offset = N % BITS_PER_CHUNK;
+            data[CHUNKS - 1] &= ~((~zero()) << offset);
+        }
+    };
 public:
     bool all() const {
         //FIXME this is wrong for non chunk aligned N
@@ -89,6 +95,7 @@ public:
     void set() {
         for (auto& x: data)
             x = ~zero();
+        sanitize();
     };
     constexpr void set(size_t pos, bool value = true) {
         if (value) {
@@ -107,6 +114,7 @@ public:
     void flip() {
         for (auto& x: data)
             x ^= ~zero();
+        sanitize();
     };
     void flip(size_t pos) {
         data[pos / BITS_PER_CHUNK] ^= one() << (pos % BITS_PER_CHUNK);
@@ -114,6 +122,7 @@ public:
     friend void operator~(self_type& lhs) {
         for (auto& x: lhs.data)
             x = ~x;
+        lhs.sanitize();
     };
     friend void operator&=(self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < CHUNKS; i++)
@@ -141,6 +150,9 @@ public:
         self_type x = lhs;
         x ^= rhs;
         return x;
+    };
+    void operator<<=(size_t shift) {
+        sanitize();
     };
     void operator>>=(size_t shift) {
         //FIXME this is wrong for non chunk aligned N
