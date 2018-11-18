@@ -16,6 +16,9 @@ class bitarray {
 public:
     std::array<T, CHUNKS> data;
 
+    bitarray() {
+        data.fill(0LLU);
+    }
     bitarray(std::initializer_list<T> list) {
         std::uninitialized_copy(list.begin(), list.begin() + CHUNKS, data.begin());
     }
