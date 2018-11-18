@@ -18,14 +18,23 @@ public:
     std::array<T, CHUNKS> data;
 
     bitarray() {
-        data.fill(0LLU);
+        data.fill(zero());
     }
     bitarray(std::initializer_list<T> list) {
         std::uninitialized_copy(list.begin(), list.begin() + CHUNKS, data.begin());
     }
+private:
+    static constexpr T zero() {
+        return static_cast<T>(0);
+    };
+    static constexpr T one() {
+        return static_cast<T>(1);
+    };
+public:
     bool all() const {
+        //FIXME this is wrong for non chunk aligned N
         for (auto& x: data)
-            if (x != ~0LLU)
+            if (x != ~zero())
                 return false;
         return true;
     };
@@ -58,6 +67,7 @@ public:
         return std::numeric_limits<T>::max();
     };
     size_t count_leading_zeros() const {
+        //FIXME this is wrong for non chunk aligned N
         for (size_t i = CHUNKS; i--;) {
             if (data[i] != 0)
                 return i * BITS_PER_CHUNK + __builtin_clzll(data[i]);
@@ -78,28 +88,28 @@ public:
     };
     void set() {
         for (auto& x: data)
-            x = ~0LLU;
+            x = ~zero();
     };
     constexpr void set(size_t pos, bool value = true) {
         if (value) {
-            data[pos / BITS_PER_CHUNK] |= 1LLU << (pos % BITS_PER_CHUNK);
+            data[pos / BITS_PER_CHUNK] |= one() << (pos % BITS_PER_CHUNK);
         } else {
-            data[pos / BITS_PER_CHUNK] &= ~(1LLU << (pos % BITS_PER_CHUNK));
+            data[pos / BITS_PER_CHUNK] &= ~(one() << (pos % BITS_PER_CHUNK));
         }
     };
     void reset() {
         for (auto& x: data)
-            x = 0LLU;
+            x = zero();
     };
     void reset(size_t pos) {
-        data[pos / BITS_PER_CHUNK] &= ~(1LLU << (pos % BITS_PER_CHUNK));
+        data[pos / BITS_PER_CHUNK] &= ~(one() << (pos % BITS_PER_CHUNK));
     };
     void flip() {
         for (auto& x: data)
-            x ^= ~0LLU;
+            x ^= ~zero();
     };
     void flip(size_t pos) {
-        data[pos / BITS_PER_CHUNK] ^= 1LLU << (pos % BITS_PER_CHUNK);
+        data[pos / BITS_PER_CHUNK] ^= one() << (pos % BITS_PER_CHUNK);
     };
     friend void operator~(self_type& lhs) {
         for (auto& x: lhs.data)
@@ -133,6 +143,7 @@ public:
         return x;
     };
     void operator>>=(size_t shift) {
+        //FIXME this is wrong for non chunk aligned N
         for (size_t i = 0; i + shift / BITS_PER_CHUNK < CHUNKS; i++) {
             data[i] = data[i + shift / BITS_PER_CHUNK] >> (shift % BITS_PER_CHUNK);
             if (i + 1 + shift / BITS_PER_CHUNK < CHUNKS)
