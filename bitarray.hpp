@@ -225,11 +225,17 @@ public:
     template <size_t Step>
     bitarray<N, T> interleave(std::array<bitarray<N / Step, T>, Step> inputs) {
         bitarray<N, T> output{};
+        for (auto& input: inputs) {
+            for (auto& x: input.data) {
+            }
+        }
         return output;
     };
     template <size_t Step>
     std::array<bitarray<N / Step, T>, Step> deinterleave(bitarray<N, T> input) {
         std::array<bitarray<N / Step, T>, Step> outputs{};
+        for (auto& x: input.data) {
+        }
         return outputs;
     };
     template <class CharT, class Traits>
