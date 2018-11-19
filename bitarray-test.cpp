@@ -29,10 +29,11 @@ int main() {
     assert((T{0, 1 << 10, 0}).count_trailing_zeros() == 64 + 10);
     assert((T{0, 1 << 10, 0}).count_leading_zeros() == 64 + 63 - 10);
 
-    bitarray<128> input{~0LLU, ~0LLU}, output{};
-    bitarray<128>::map<g>(input, output, f);
+    bitarray<192> input{0xffLLU << 56, 0xffLLU << 56, 0xffLLU << 56}, output{};
+    std::cout << "testing shift left operator" << std::endl;
     std::cout << input << std::endl;
-    std::cout << output << std::endl;
+    input = input << 1;
+    std::cout << input << std::endl;
 
     return 0;
 }

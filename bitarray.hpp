@@ -151,24 +151,15 @@ public:
         x ^= rhs;
         return x;
     };
-    void operator<<=(size_t shift) {
-        size_t i;
-        for (i = WORDS - 1; i - shift / BITS_PER_WORD < WORDS; i--) {
-            data[i] = data[i - shift / BITS_PER_WORD] >> (shift % BITS_PER_WORD);
-            if (i + 1 + shift / BITS_PER_WORD < WORDS)
-                data[i] |= data[i + 1 + shift / BITS_PER_WORD] << (BITS_PER_WORD - shift % BITS_PER_WORD);
-        }
-        for (; i < WORDS; i--) {
-            data[i] = 0;
-        }
-    };
 public:
     template <typename G>
     static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T)) {
+        for (auto& w: output.data) {
+            w = ~zero();
+        }
         for (size_t i = 0; i < input.WORDS; i++) {
-            const T& x = input.data[i];
             //TODO f should return a compile-time fixed number of words per input word
-            T t = f(x);
+            T t = f(input.data[i]);
             size_t start = G{}(i * input.BITS_PER_WORD);
             size_t end = G{}((i + 1) * input.BITS_PER_WORD - 1);
             size_t start_bit = start % output.BITS_PER_WORD;
@@ -178,18 +169,29 @@ public:
             ssize_t bit_offset = start_bit;
 #pragma clang loop unroll(full)
             for (size_t j = start_word; j <= end_word && j < output.WORDS; j++) {
+                //TODO this expects the output to be zeroed, so can't happen in-place
                 if (bit_offset >= 0) {
-                    output.data[j] |=
-                        t << bit_offset;
+                    output.data[j] |= t << bit_offset;
                 } else {
-                    output.data[j] |=
-                        t >> -bit_offset;
+                    output.data[j] = t >> -bit_offset;
                 }
-                bit_offset -= output.BITS_PER_WORD;
+                bit_offset -= static_cast<ssize_t>(output.BITS_PER_WORD);
             }
         };
-    };
+    }
 public:
+    friend self_type operator<<(self_type lhs, size_t _shift) {
+        (void)_shift;
+        auto f = [](T x) -> T { return x; };
+        struct g {
+            size_t operator()(size_t offset) {
+                return offset + 6;
+            };
+        };
+        self_type x{};
+        map<g>(lhs, x, f);
+        return x;
+    };
     void operator>>=(size_t shift) {
         size_t i;
         for (i = 0; i + shift / BITS_PER_WORD < WORDS; i++) {
