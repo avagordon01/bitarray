@@ -136,17 +136,17 @@ public:
         for (size_t i = 0; i < WORDS; i++)
             lhs.data[i] ^= rhs.data[i];
     };
-    friend void operator&(self_type& lhs, const self_type& rhs) {
+    friend self_type operator&(self_type& lhs, const self_type& rhs) {
         self_type x = lhs;
         x &= rhs;
         return x;
     };
-    friend void operator|(self_type& lhs, const self_type& rhs) {
+    friend self_type operator|(self_type& lhs, const self_type& rhs) {
         self_type x = lhs;
         x |= rhs;
         return x;
     };
-    friend void operator^(self_type& lhs, const self_type& rhs) {
+    friend self_type operator^(self_type& lhs, const self_type& rhs) {
         self_type x = lhs;
         x ^= rhs;
         return x;
