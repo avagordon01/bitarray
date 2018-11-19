@@ -154,9 +154,8 @@ public:
 public:
     template <typename G>
     static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T)) {
-        for (auto& w: output.data) {
-            w = ~zero();
-        }
+        //FIXME the iteration needs to happen in the correct order to be able to happen in-place
+        //i.e. reverse iterator for shift left and forward iterator for shift right
         for (size_t i = 0; i < input.WORDS; i++) {
             //TODO f should return a compile-time fixed number of words per input word
             T t = f(input.data[i]);
@@ -169,12 +168,13 @@ public:
             ssize_t bit_offset = start_bit;
 #pragma clang loop unroll(full)
             for (size_t j = start_word; j <= end_word && j < output.WORDS; j++) {
-                //TODO this expects the output to be zeroed, so can't happen in-place
+                //FIXME this doesn't work with a "negative"/right shift
                 if (bit_offset >= 0) {
                     output.data[j] |= t << bit_offset;
                 } else {
-                    output.data[j] = t >> -bit_offset;
+                    output.data[j] |= t >> -bit_offset;
                 }
+                //TODO add % BITS_PER_WORD, when there can be more than two output words generated per input word
                 bit_offset -= static_cast<ssize_t>(output.BITS_PER_WORD);
             }
         };
@@ -242,8 +242,6 @@ public:
     };
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
-        //FIXME decide what order the words should be stored in memory
-        //currently the memory layout doesn't match this print
         for (size_t i = N; i--;) {
             bool bit = x[i];
             os << (bit ? '1' : '0');
