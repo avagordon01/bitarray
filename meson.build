@@ -8,6 +8,4 @@ add_project_arguments(
   language: 'cpp',
 )
 
-test('bitarray-test', executable('bitarray-test',
-  'bitarray-test.cpp'
-))
+executable('bitarray-test', 'bitarray-test.cpp')
