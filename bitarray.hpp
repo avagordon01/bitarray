@@ -160,14 +160,13 @@ public:
             T t = f(input.data[i]);
             ssize_t start = g(static_cast<ssize_t>(i * input.BITS_PER_WORD));
             ssize_t end = g(static_cast<ssize_t>((i + 1) * input.BITS_PER_WORD - 1));
-            ssize_t start_bit = start % output.BITS_PER_WORD;
-            ssize_t start_word = start / output.BITS_PER_WORD;
-            //size_t end_bit = end % output.BITS_PER_WORD;
+            ssize_t start_bit = start % static_cast<ssize_t>(output.BITS_PER_WORD);
+            ssize_t start_word = start / static_cast<ssize_t>(output.BITS_PER_WORD);
+            //ssize_t end_bit = end % output.BITS_PER_WORD;
             ssize_t end_word = end / output.BITS_PER_WORD;
             ssize_t bit_offset = start_bit;
 #pragma clang loop unroll(full)
             for (ssize_t j = start_word; j <= end_word && j < static_cast<ssize_t>(output.WORDS); j++) {
-                //FIXME this doesn't work with a "negative"/right shift
                 if (bit_offset >= 0) {
                     output.data[j] |= t << bit_offset;
                 } else {
