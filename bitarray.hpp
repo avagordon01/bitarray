@@ -159,15 +159,15 @@ public:
         for (size_t i = 0; i < input.WORDS; i++) {
             //TODO f should return a compile-time fixed number of words per input word
             T t = f(input.data[i]);
-            size_t start = G{}(i * input.BITS_PER_WORD);
-            size_t end = G{}((i + 1) * input.BITS_PER_WORD - 1);
-            size_t start_bit = start % output.BITS_PER_WORD;
-            size_t start_word = start / output.BITS_PER_WORD;
+            ssize_t start = G{}(static_cast<ssize_t>(i * input.BITS_PER_WORD));
+            ssize_t end = G{}(static_cast<ssize_t>((i + 1) * input.BITS_PER_WORD - 1));
+            ssize_t start_bit = start % output.BITS_PER_WORD;
+            ssize_t start_word = start / output.BITS_PER_WORD;
             //size_t end_bit = end % output.BITS_PER_WORD;
-            size_t end_word = end / output.BITS_PER_WORD;
+            ssize_t end_word = end / output.BITS_PER_WORD;
             ssize_t bit_offset = start_bit;
 #pragma clang loop unroll(full)
-            for (size_t j = start_word; j <= end_word && j < output.WORDS; j++) {
+            for (ssize_t j = start_word; j <= end_word && j < static_cast<ssize_t>(output.WORDS); j++) {
                 //FIXME this doesn't work with a "negative"/right shift
                 if (bit_offset >= 0) {
                     output.data[j] |= t << bit_offset;
@@ -184,8 +184,8 @@ public:
         (void)_shift;
         auto f = [](T x) -> T { return x; };
         struct g {
-            size_t operator()(size_t offset) {
-                return offset + 6;
+            ssize_t operator()(ssize_t offset) {
+                return offset - 6;
             };
         };
         self_type x{};
@@ -242,7 +242,7 @@ public:
     };
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
-        for (size_t i = N; i--;) {
+        for (ssize_t i = N; i--;) {
             bool bit = x[i];
             os << (bit ? '1' : '0');
         }
