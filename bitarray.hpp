@@ -152,7 +152,8 @@ public:
         return x;
     };
 public:
-    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T), ssize_t (*g)(ssize_t)) {
+    template<typename L>
+    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T), L g) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
         //i.e. reverse iterator for shift left and forward iterator for shift right
         for (size_t i = 0; i < input.WORDS; i++) {
@@ -178,10 +179,16 @@ public:
         };
     }
 public:
-    friend self_type operator<<(self_type lhs, size_t _shift) {
-        (void)_shift;
+    friend self_type operator<<(const self_type& lhs, size_t _shift) {
         auto f = [](T x) -> T { return x; };
-        auto g = [](ssize_t offset) -> ssize_t { return offset - 6; };
+        auto g = [_shift](ssize_t offset) -> ssize_t { return offset + static_cast<ssize_t>(_shift); };
+        self_type x{};
+        map(lhs, x, f, g);
+        return x;
+    };
+    friend self_type operator>>(const self_type& lhs, size_t _shift) {
+        auto f = [](T x) -> T { return x; };
+        auto g = [_shift](ssize_t offset) -> ssize_t { return offset - static_cast<ssize_t>(_shift); };
         self_type x{};
         map(lhs, x, f, g);
         return x;
@@ -196,11 +203,6 @@ public:
         for (; i < WORDS; i++) {
             data[i] = 0;
         }
-    };
-    friend self_type operator>>(self_type&lhs, size_t shift) {
-        self_type x = lhs;
-        x >>= shift;
-        return x;
     };
     template <size_t Step, size_t Start>
     static constexpr self_type mask() {
