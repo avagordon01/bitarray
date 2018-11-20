@@ -152,15 +152,14 @@ public:
         return x;
     };
 public:
-    template <typename G>
-    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T)) {
+    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T), ssize_t (*g)(ssize_t)) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
         //i.e. reverse iterator for shift left and forward iterator for shift right
         for (size_t i = 0; i < input.WORDS; i++) {
             //TODO f should return a compile-time fixed number of words per input word
             T t = f(input.data[i]);
-            ssize_t start = G{}(static_cast<ssize_t>(i * input.BITS_PER_WORD));
-            ssize_t end = G{}(static_cast<ssize_t>((i + 1) * input.BITS_PER_WORD - 1));
+            ssize_t start = g(static_cast<ssize_t>(i * input.BITS_PER_WORD));
+            ssize_t end = g(static_cast<ssize_t>((i + 1) * input.BITS_PER_WORD - 1));
             ssize_t start_bit = start % output.BITS_PER_WORD;
             ssize_t start_word = start / output.BITS_PER_WORD;
             //size_t end_bit = end % output.BITS_PER_WORD;
@@ -183,13 +182,9 @@ public:
     friend self_type operator<<(self_type lhs, size_t _shift) {
         (void)_shift;
         auto f = [](T x) -> T { return x; };
-        struct g {
-            ssize_t operator()(ssize_t offset) {
-                return offset - 6;
-            };
-        };
+        auto g = [](ssize_t offset) -> ssize_t { return offset - 6; };
         self_type x{};
-        map<g>(lhs, x, f);
+        map(lhs, x, f, g);
         return x;
     };
     void operator>>=(size_t shift) {
