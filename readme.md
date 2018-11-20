@@ -26,6 +26,7 @@ Initially, you might expect a bitarray with N words to have to perform N shift i
 ## Dependencies
 
  - A C++17 compiler, we use clang++ by default for better sanitisation
+ - Target CPU with support for the [BMI2 instruction set](https://en.wikipedia.org/wiki/Bit\_Manipulation\_Instruction\_Sets#BMI2) (for pdep/pext support, which deposit/extract and interleave/deinterleave rely on)
 
 For testing and installing:
  - [Meson](https://mesonbuild.com/) `sudo apt install meson`
