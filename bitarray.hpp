@@ -153,15 +153,14 @@ public:
     };
 public:
     enum Order { Forward, Backward };
-    template<Order order, typename L>
-    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, T (*f)(T), L g) {
+    template<Order order, typename G, typename F>
+    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, F f, G g) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
         //i.e. reverse iterator for shift left and forward iterator for shift right
         for (size_t i = 0; i < input.WORDS; i++) {
-            //TODO f should return a compile-time fixed number of words per input word
-            T t = f(input.data[i]);
+            auto t = f(input.data[i]);
             ssize_t start = g(static_cast<ssize_t>(i * input.BITS_PER_WORD));
-            ssize_t end = g(static_cast<ssize_t>((i + 1) * input.BITS_PER_WORD - 1));
+            ssize_t end = g(static_cast<ssize_t>((i + t.size()) * input.BITS_PER_WORD - 1));
             ssize_t start_bit = start % static_cast<ssize_t>(output.BITS_PER_WORD);
             ssize_t start_word = start / static_cast<ssize_t>(output.BITS_PER_WORD);
             //ssize_t end_bit = end % output.BITS_PER_WORD;
@@ -170,9 +169,9 @@ public:
 #pragma clang loop unroll(full)
             for (ssize_t j = start_word; j <= end_word && j < static_cast<ssize_t>(output.WORDS); j++) {
                 if (bit_offset >= 0) {
-                    output.data[j] |= t << bit_offset;
+                    output.data[j] |= t.front() << bit_offset;
                 } else {
-                    output.data[j] |= t >> -bit_offset;
+                    output.data[j] |= t.front() >> -bit_offset;
                 }
                 //TODO add % BITS_PER_WORD, when there can be more than two output words generated per input word
                 bit_offset -= static_cast<ssize_t>(output.BITS_PER_WORD);
@@ -181,14 +180,14 @@ public:
     }
 public:
     friend self_type operator<<(const self_type& lhs, size_t _shift) {
-        auto f = [](T x) -> T { return x; };
+        auto f = [](T x) -> std::array<T, 1> { return {x}; };
         auto g = [_shift](ssize_t offset) -> ssize_t { return offset + static_cast<ssize_t>(_shift); };
         self_type x{};
         map<Order::Backward>(lhs, x, f, g);
         return x;
     };
     friend self_type operator>>(const self_type& lhs, size_t _shift) {
-        auto f = [](T x) -> T { return x; };
+        auto f = [](T x) -> std::array<T, 1> { return {x}; };
         auto g = [_shift](ssize_t offset) -> ssize_t { return offset - static_cast<ssize_t>(_shift); };
         self_type x{};
         map<Order::Forward>(lhs, x, f, g);
