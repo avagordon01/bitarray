@@ -152,8 +152,7 @@ public:
         return x;
     };
 public:
-    enum Order { Forward, Backward };
-    template<Order order, typename F>
+    template<typename F>
     static void map(const bitarray<N, T>& input, bitarray<N, T>& output, F f, ssize_t offset) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
         //i.e. reverse iterator for shift left and forward iterator for shift right
@@ -193,13 +192,13 @@ public:
     friend self_type operator<<(const self_type& lhs, size_t _shift) {
         auto f = [](T x) -> std::array<T, 1> { return {x}; };
         self_type x{};
-        map<Order::Backward>(lhs, x, f, static_cast<ssize_t>(_shift));
+        map(lhs, x, f, static_cast<ssize_t>(_shift));
         return x;
     };
     friend self_type operator>>(const self_type& lhs, size_t _shift) {
         auto f = [](T x) -> std::array<T, 1> { return {x}; };
         self_type x{};
-        map<Order::Forward>(lhs, x, f, -static_cast<ssize_t>(_shift));
+        map(lhs, x, f, -static_cast<ssize_t>(_shift));
         return x;
     };
     void operator>>=(size_t shift) {
