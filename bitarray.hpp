@@ -238,6 +238,8 @@ public:
     //bitarray<N, T> interleave(std::array<bitarray<N / Step, T>, Step> inputs) {
     bitarray<N * Step, T> interleave(bitarray<N, T> input) {
         auto f = [](T x) -> std::array<T, Step> { return {
+            //TODO generalise this
+            //getting the short_mask<Start> right will be hard
             _pdep_u64(x, short_mask<Step, 0>()),
             _pdep_u64(x >> std::numeric_limits<T>::digits / Step, short_mask<Step, 0>()),
         };};
