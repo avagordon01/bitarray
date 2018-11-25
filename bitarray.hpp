@@ -29,11 +29,11 @@ class bitarray {
     using self_type = bitarray<N, T>;
     static_assert(std::numeric_limits<T>::is_integer, "storage type must be an integer type");
 
+public:
     static constexpr size_t BITS_PER_WORD = std::numeric_limits<T>::digits;
     static constexpr size_t WORDS = 1 + (N - 1) / BITS_PER_WORD;
     static_assert(WORDS * BITS_PER_WORD >= N, "oh no");
 
-public:
     std::array<T, WORDS> data;
 
     bitarray() {
@@ -171,8 +171,8 @@ public:
         return x;
     };
 public:
-    template<typename F>
-    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, F f, ssize_t offset) {
+    template<typename F, size_t M>
+    static void map(const bitarray<N, T>& input, bitarray<M, T>& output, F f, ssize_t offset) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
         //i.e. reverse iterator for shift left and forward iterator for shift right
 #pragma unroll
@@ -240,16 +240,18 @@ public:
         return x;
     };
     template <size_t Step>
-    bitarray<N, T> interleave(std::array<bitarray<N / Step, T>, Step> inputs) {
-        bitarray<N, T> output{};
-        for (auto& input: inputs) {
-            for (auto& x: input.data) {
-            }
-        }
+    //bitarray<N, T> interleave(std::array<bitarray<N / Step, T>, Step> inputs) {
+    bitarray<N * Step, T> interleave(bitarray<N, T> input) {
+        auto f = [](T x) -> std::array<T, Step> { return {
+            _pdep_u64(x, short_mask<Step, 0>()),
+            _pdep_u64(x, short_mask<Step, 0>()),
+        };};
+        bitarray<N * Step, T> output{};
+        map(input, output, f, 0);
         return output;
     };
     template <size_t Step>
-    std::array<bitarray<N / Step, T>, Step> deinterleave(bitarray<N, T> input) {
+    static std::array<bitarray<N / Step, T>, Step> deinterleave(bitarray<N, T> input) {
         std::array<bitarray<N / Step, T>, Step> outputs{};
         for (auto& x: input.data) {
         }

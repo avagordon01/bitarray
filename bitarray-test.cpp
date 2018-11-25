@@ -24,10 +24,19 @@ int main() {
     assert((T{0, 1 << 10, 0}).count_trailing_zeros() == 64 + 10);
     assert((T{0, 1 << 10, 0}).count_leading_zeros() == 64 + 63 - 10);
 
-    bitarray<192> input{0LLU, 0LLU, ~0LLU}, output{};
+    /*
+    {
+        bitarray<192> input{~0LLU, 0LLU, 0LLU}, output{};
+        std::cout << input << std::endl;
+        input = input >> 63;
+        std::cout << input << std::endl;
+    }
+    */
+
+    bitarray<64> input{~0LLU};
     std::cout << input << std::endl;
-    input = input >> 191;
-    std::cout << input << std::endl;
+    auto output = input.interleave<2>(input);
+    std::cout << output << std::endl;
 
     return 0;
 }
