@@ -244,7 +244,7 @@ public:
     bitarray<N * Step, T> interleave(bitarray<N, T> input) {
         auto f = [](T x) -> std::array<T, Step> { return {
             _pdep_u64(x, short_mask<Step, 0>()),
-            _pdep_u64(x, short_mask<Step, 0>()),
+            _pdep_u64(x >> std::numeric_limits<T>::digits / Step, short_mask<Step, 0>()),
         };};
         bitarray<N * Step, T> output{};
         map(input, output, f, 0);
