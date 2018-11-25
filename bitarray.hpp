@@ -5,6 +5,17 @@
 #include <iostream>
 #include <immintrin.h>
 
+template<typename T>
+std::pair<T, T> floor_divide(T x, T y) {
+    T q = x >= 0 ?
+        x / y :
+        x / y - 1;
+    T r = x >= 0 ?
+        x % y :
+        y + x % y;
+    return {q, r};
+}
+
 template <size_t N, typename T = uint_fast32_t>
 class bitarray {
     using self_type = bitarray<N, T>;
@@ -161,12 +172,7 @@ public:
             auto t = f(input.data[i]);
             ssize_t start = static_cast<ssize_t>(i * input.BITS_PER_WORD * t.size()) + offset;
             //round down division and modulus instead of round to zero
-            ssize_t start_bit = start >= 0 ?
-                start % static_cast<ssize_t>(output.BITS_PER_WORD) :
-                static_cast<ssize_t>(output.BITS_PER_WORD) + start % static_cast<ssize_t>(output.BITS_PER_WORD);
-            ssize_t start_word = start >= 0 ?
-                start / static_cast<ssize_t>(output.BITS_PER_WORD) :
-                start / static_cast<ssize_t>(output.BITS_PER_WORD) - 1;
+            auto [start_word, start_bit] = floor_divide<ssize_t>(start, static_cast<ssize_t>(output.BITS_PER_WORD));
 #pragma unroll
             for (size_t j = start_word;
                     j - start_word < t.size() &&
