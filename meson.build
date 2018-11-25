@@ -9,3 +9,4 @@ add_project_arguments(
 )
 
 executable('bitarray-test', 'bitarray-test.cpp')
+executable('divide-test', 'divide-test.cpp')

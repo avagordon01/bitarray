@@ -7,14 +7,21 @@
 #include <type_traits>
 
 template<typename T>
-std::pair<T, T> floor_divide(T x, T y) {
-    static_assert(std::is_integral<T>::value, "type parameter T to floor_divide must be integral");
-    //TODO not checked with y < 0
-    if (x >= 0) {
-        return {x / y, x % y};
-    } else {
-        return {x / y - 1, x % y + y};
+std::pair<T, T> euclid_divide(T x, T y) {
+    static_assert(std::is_integral<T>::value, "type parameter T to euclid_divide must be integral");
+    static_assert(std::is_signed<T>::value, "type parameter T to euclid_divide must be signed");
+    T q = x / y;
+    T r = x % y;
+    if (r < 0) {
+        if (y >= 0) {
+            r += y;
+            q -= 1;
+        } else {
+            r -= y;
+            q += 1;
+        }
     }
+    return {q, r};
 }
 
 template <size_t N, typename T = uint_fast32_t>
@@ -172,8 +179,7 @@ public:
         for (size_t i = 0; i < input.WORDS; i++) {
             auto t = f(input.data[i]);
             ssize_t start = static_cast<ssize_t>(i * input.BITS_PER_WORD * t.size()) + offset;
-            //round down division and modulus instead of round to zero
-            auto [start_word, start_bit] = floor_divide<ssize_t>(start, static_cast<ssize_t>(output.BITS_PER_WORD));
+            auto [start_word, start_bit] = euclid_divide<ssize_t>(start, static_cast<ssize_t>(output.BITS_PER_WORD));
 #pragma unroll
             for (size_t j = start_word;
                     j - start_word < t.size() &&
@@ -183,12 +189,13 @@ public:
             }
             if (start_bit == 0)
                 continue;
+            start_word += 1;
 #pragma unroll
-            for (size_t j = start_word + 1;
-                    j - (start_word + 1) < t.size() &&
+            for (size_t j = start_word;
+                    j - start_word < t.size() &&
                     j < output.data.size()
                 ; j++) {
-                output.data[j] |= t[j - (start_word + 1)] >> (output.BITS_PER_WORD - start_bit);
+                output.data[j] |= t[j - start_word] >> (output.BITS_PER_WORD - start_bit);
             }
         };
     }
