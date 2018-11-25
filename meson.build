@@ -1,7 +1,7 @@
 project('bitarray', 'cpp')
 
 add_project_arguments(
-  '-mbmi2', '-mpopcnt',
+  '-mbmi2',
   '-Werror', '-Wall', '-Wextra', '-Wpedantic',
   '-fsanitize=implicit-conversion', '-fsanitize=integer', '-fsanitize=undefined',
   '-std=c++17',
