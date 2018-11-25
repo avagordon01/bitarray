@@ -4,16 +4,17 @@
 #include <memory>
 #include <iostream>
 #include <immintrin.h>
+#include <type_traits>
 
 template<typename T>
 std::pair<T, T> floor_divide(T x, T y) {
-    T q = x >= 0 ?
-        x / y :
-        x / y - 1;
-    T r = x >= 0 ?
-        x % y :
-        y + x % y;
-    return {q, r};
+    static_assert(std::is_integral<T>::value, "type parameter T to floor_divide must be integral");
+    //TODO not checked with y < 0
+    if (x >= 0) {
+        return {x / y, x % y};
+    } else {
+        return {x / y - 1, x % y + y};
+    }
 }
 
 template <size_t N, typename T = uint_fast32_t>
