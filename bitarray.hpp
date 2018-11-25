@@ -26,10 +26,10 @@ std::pair<T, T> euclid_divide(T x, T y) {
 
 template <size_t N, typename T = uint_fast32_t>
 class bitarray {
+public:
     using self_type = bitarray<N, T>;
     static_assert(std::numeric_limits<T>::is_integer, "storage type must be an integer type");
 
-public:
     static constexpr size_t BITS_PER_WORD = std::numeric_limits<T>::digits;
     static constexpr size_t WORDS = 1 + (N - 1) / BITS_PER_WORD;
     static_assert(WORDS * BITS_PER_WORD >= N, "oh no");
@@ -43,7 +43,6 @@ public:
         std::uninitialized_copy(list.begin(), list.begin() + WORDS, data.begin());
         sanitize();
     }
-private:
     static constexpr T zero() {
         return static_cast<T>(0);
     };
@@ -56,7 +55,6 @@ private:
     void sanitize() {
         data.back() &= ~(ones() << (N % BITS_PER_WORD));
     };
-public:
     bool all() const {
         if ((data.back() | (ones() << (N % BITS_PER_WORD))) != ones())
             return false;
@@ -169,7 +167,6 @@ public:
         x ^= rhs;
         return x;
     };
-public:
     template<typename F, size_t M>
     static void map(const bitarray<N, T>& input, bitarray<M, T>& output, F f, ssize_t offset) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
@@ -198,7 +195,6 @@ public:
             }
         };
     }
-public:
     friend self_type operator<<(const self_type& lhs, size_t _shift) {
         auto f = [](T x) -> std::array<T, 1> { return {x}; };
         self_type x{};
