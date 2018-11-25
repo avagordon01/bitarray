@@ -49,17 +49,20 @@ private:
     static constexpr T one() {
         return static_cast<T>(1);
     };
+    static constexpr T ones() {
+        return ~static_cast<T>(0);
+    };
     void sanitize() {
         if constexpr (N % BITS_PER_WORD != 0) {
             size_t offset = N % BITS_PER_WORD;
-            data.back() &= ~((~zero()) << offset);
+            data.back() &= ~(ones() << offset);
         }
     };
 public:
     bool all() const {
         //FIXME this is wrong for non word aligned N
         for (auto& x: data)
-            if (x != ~zero())
+            if (x != ones())
                 return false;
         return true;
     };
@@ -113,7 +116,7 @@ public:
     };
     void set() {
         for (auto& x: data)
-            x = ~zero();
+            x = ones();
         sanitize();
     };
     constexpr void set(size_t pos, bool value = true) {
@@ -132,7 +135,7 @@ public:
     };
     void flip() {
         for (auto& x: data)
-            x ^= ~zero();
+            x ^= ones();
         sanitize();
     };
     void flip(size_t pos) {
