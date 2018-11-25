@@ -41,6 +41,7 @@ public:
     }
     bitarray(std::initializer_list<T> list) {
         std::uninitialized_copy(list.begin(), list.begin() + WORDS, data.begin());
+        sanitize();
     }
 private:
     static constexpr T zero() {
@@ -53,16 +54,14 @@ private:
         return ~static_cast<T>(0);
     };
     void sanitize() {
-        if constexpr (N % BITS_PER_WORD != 0) {
-            size_t offset = N % BITS_PER_WORD;
-            data.back() &= ~(ones() << offset);
-        }
+        data.back() &= ~(ones() << (N % BITS_PER_WORD));
     };
 public:
     bool all() const {
-        //FIXME this is wrong for non word aligned N
-        for (auto& x: data)
-            if (x != ones())
+        if ((data.back() | (ones() << (N % BITS_PER_WORD))) != ones())
+            return false;
+        for (size_t i = 0; i + 1 < data.size(); i++)
+            if (data[i] != ones())
                 return false;
         return true;
     };
@@ -88,19 +87,16 @@ public:
         return N;
     };
     size_t count_trailing_zeros() const {
-        for (size_t i = 0; i < WORDS; i++) {
+        for (size_t i = 0; i < WORDS; i++)
             if (data[i] != 0)
                 return i * BITS_PER_WORD + __builtin_ctzll(data[i]);
-        }
-        return std::numeric_limits<T>::max();
+        return N;
     };
     size_t count_leading_zeros() const {
-        //FIXME this is wrong for non word aligned N
-        for (size_t i = WORDS; i--;) {
+        for (size_t i = WORDS; i--;)
             if (data[i] != 0)
-                return i * BITS_PER_WORD + __builtin_clzll(data[i]);
-        }
-        return std::numeric_limits<T>::max();
+                return i * BITS_PER_WORD + __builtin_clzll(data[i]) - (BITS_PER_WORD - N % BITS_PER_WORD);
+        return N;
     };
     friend bool operator==(const self_type& lhs, const self_type& rhs) {
         for (size_t i = 0; i < WORDS; i++)

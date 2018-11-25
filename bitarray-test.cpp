@@ -18,12 +18,9 @@ int main() {
         assert((T{0, 0, 0}).none());
         assert(!(T{0, 0, 0}).any());
         assert((T{1, 0, 0}).any());
-        assert((T{1, 2, 3}).count() == 4);
-
-        assert((T{1, 2, 3}).count() == 4);
+        assert((T{3, 2, 1}).count() == 4);
 
         assert((T{0, 1 << 10, 0}).count_trailing_zeros() == 64 + 10);
-        std::cout << (T{~0LLU, ~0LLU, ~0LLU}).count_leading_zeros() << std::endl;
         assert((T{0, 1 << 10, 0}).count_leading_zeros() == 129 - 64 - 11);
     }
 
