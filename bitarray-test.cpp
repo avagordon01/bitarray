@@ -2,15 +2,6 @@
 #include <cassert>
 #include <iostream>
 
-uint64_t f(uint64_t x) {
-    return x;
-};
-struct g {
-    size_t operator()(size_t offset) {
-        return offset + 1;
-    };
-};
-
 int main() {
     {
         using T = bitarray<129>;
