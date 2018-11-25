@@ -153,44 +153,53 @@ public:
     };
 public:
     enum Order { Forward, Backward };
-    template<Order order, typename G, typename F>
-    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, F f, G g) {
+    template<Order order, typename F>
+    static void map(const bitarray<N, T>& input, bitarray<N, T>& output, F f, ssize_t offset) {
         //FIXME the iteration needs to happen in the correct order to be able to happen in-place
         //i.e. reverse iterator for shift left and forward iterator for shift right
+#pragma unroll
         for (size_t i = 0; i < input.WORDS; i++) {
             auto t = f(input.data[i]);
-            ssize_t start = g(static_cast<ssize_t>(i * input.BITS_PER_WORD));
-            ssize_t end = g(static_cast<ssize_t>((i + t.size()) * input.BITS_PER_WORD - 1));
+            ssize_t start = static_cast<ssize_t>(i * input.BITS_PER_WORD * t.size()) + offset;
             ssize_t start_bit = start % static_cast<ssize_t>(output.BITS_PER_WORD);
-            ssize_t start_word = start / static_cast<ssize_t>(output.BITS_PER_WORD);
-            //ssize_t end_bit = end % output.BITS_PER_WORD;
-            ssize_t end_word = end / output.BITS_PER_WORD;
-            ssize_t bit_offset = start_bit;
-#pragma clang loop unroll(full)
-            for (ssize_t j = start_word; j <= end_word && j < static_cast<ssize_t>(output.WORDS); j++) {
-                if (bit_offset >= 0) {
-                    output.data[j] |= t.front() << bit_offset;
-                } else {
-                    output.data[j] |= t.front() >> -bit_offset;
-                }
-                //TODO add % BITS_PER_WORD, when there can be more than two output words generated per input word
-                bit_offset -= static_cast<ssize_t>(output.BITS_PER_WORD);
+            ssize_t start_word = start >= 0 ?
+                start / static_cast<ssize_t>(output.BITS_PER_WORD) :
+                start / static_cast<ssize_t>(output.BITS_PER_WORD) - 1;
+            if (start_word < 0)
+                start_word = 0;
+            if (start_bit < 0)
+                start_bit += static_cast<ssize_t>(output.BITS_PER_WORD);
+#pragma unroll
+            //FIXME the lowest input word does not make it into the output when shifting right
+            //start < 0 -> something goes wrong
+            for (size_t j = start_word;
+                    j - start_word < t.size() &&
+                    j < output.data.size()
+                ; j++) {
+                output.data[j] |= t[j - start_word] << start_bit;
+            }
+            if (start_bit == 0)
+                continue;
+#pragma unroll
+            for (size_t j = start_word + 1;
+                    j - start_word - 1 < t.size() &&
+                    j < output.data.size()
+                ; j++) {
+                output.data[j] |= t[j - start_word - 1] >> (output.BITS_PER_WORD - start_bit);
             }
         };
     }
 public:
     friend self_type operator<<(const self_type& lhs, size_t _shift) {
         auto f = [](T x) -> std::array<T, 1> { return {x}; };
-        auto g = [_shift](ssize_t offset) -> ssize_t { return offset + static_cast<ssize_t>(_shift); };
         self_type x{};
-        map<Order::Backward>(lhs, x, f, g);
+        map<Order::Backward>(lhs, x, f, static_cast<ssize_t>(_shift));
         return x;
     };
     friend self_type operator>>(const self_type& lhs, size_t _shift) {
         auto f = [](T x) -> std::array<T, 1> { return {x}; };
-        auto g = [_shift](ssize_t offset) -> ssize_t { return offset - static_cast<ssize_t>(_shift); };
         self_type x{};
-        map<Order::Forward>(lhs, x, f, g);
+        map<Order::Forward>(lhs, x, f, -static_cast<ssize_t>(_shift));
         return x;
     };
     void operator>>=(size_t shift) {
