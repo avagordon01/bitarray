@@ -1,4 +1,4 @@
-#include "bitarray.hpp"
+#include "bitarray.hh"
 #include <cstdint>
 #include <cassert>
 

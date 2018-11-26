@@ -8,5 +8,5 @@ add_project_arguments(
   language: 'cpp',
 )
 
-executable('bitarray-test', 'bitarray-test.cpp')
-executable('divide-test', 'divide-test.cpp')
+executable('bitarray-test', 'bitarray-test.cc')
+executable('divide-test', 'divide-test.cc')
