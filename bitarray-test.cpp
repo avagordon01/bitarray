@@ -25,15 +25,12 @@ int main() {
     }
 
     {
-        std::array<bitarray<64>, 2> inputs{
-            bitarray<64>{0LLU},
+        std::array<bitarray<64>, 3> inputs{
             bitarray<64>{~0LLU},
+            bitarray<64>{0LLU},
+            bitarray<64>{0LLU},
         };
-        for (auto& input: inputs) {
-            std::cout << input;
-        }
-        std::cout << std::endl;
-        auto output = bitarray<64>::interleave<2>(inputs);
+        auto output = bitarray<64>::interleave(inputs);
         std::cout << output << std::endl;
     }
 
