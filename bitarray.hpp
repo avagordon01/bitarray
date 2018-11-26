@@ -53,7 +53,8 @@ public:
         return ~static_cast<T>(0);
     };
     void sanitize() {
-        data.back() &= ~(ones() << (N % BITS_PER_WORD));
+        if (N % BITS_PER_WORD != 0)
+            data.back() &= ~(ones() << (N % BITS_PER_WORD));
     };
     bool all() const {
         if ((data.back() | (ones() << (N % BITS_PER_WORD))) != ones())
