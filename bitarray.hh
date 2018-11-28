@@ -235,26 +235,15 @@ public:
         }
         return x;
     };
-    template <size_t Step>
-    //bitarray<N, T> interleave(std::array<bitarray<N / Step, T>, Step> inputs) {
-    static bitarray<N * Step, T> interleave(std::array<bitarray<N, T>, Step> inputs) {
-        auto f = [](T x) -> std::array<T, Step> { return {
-            //TODO generalise this
-            //getting the short_mask<Start> right will be hard
+    template <size_t... Indices>
+    static bitarray<N * sizeof...(Indices), T> interleave(std::array<bitarray<N, T>, sizeof...(Indices)> inputs) {
+        auto f = [](T x) -> std::array<T, sizeof...(Indices)> { return {
             _pdep_u64(
-                x >> (0 * std::numeric_limits<T>::digits) / Step,
-                short_mask<Step, Step - 1 - 0 * BITS_PER_WORD % Step>()
-            ),
-            _pdep_u64(
-                x >> (1 * std::numeric_limits<T>::digits) / Step,
-                short_mask<Step, Step - 1 - 1 * BITS_PER_WORD % Step>()
-            ),
-            _pdep_u64(
-                x >> (2 * std::numeric_limits<T>::digits) / Step,
-                short_mask<Step, Step - 1 - 2 * BITS_PER_WORD % Step>()
-            ),
+                x >> (Indices * std::numeric_limits<T>::digits) / sizeof...(Indices),
+                short_mask<sizeof...(Indices), sizeof...(Indices) - 1 - Indices * BITS_PER_WORD % sizeof...(Indices)>()
+            )...
         };};
-        bitarray<N * Step, T> output{};
+        bitarray<N * sizeof...(Indices), T> output{};
         for (auto& input: inputs) {
             map(input, output, f, 0);
         }

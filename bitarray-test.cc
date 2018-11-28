@@ -30,7 +30,7 @@ int main() {
             bitarray<64>{0LLU},
             bitarray<64>{0LLU},
         };
-        auto output = bitarray<64>::interleave(inputs);
+        auto output = bitarray<64>::interleave<0, 1, 2>(inputs);
         std::cout << output << std::endl;
     }
 
