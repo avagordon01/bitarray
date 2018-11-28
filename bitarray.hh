@@ -238,6 +238,7 @@ public:
     template <size_t... Indices>
     static bitarray<N * sizeof...(Indices), T> interleave(std::array<bitarray<N, T>, sizeof...(Indices)> inputs) {
         auto f = [](T x) -> std::array<T, sizeof...(Indices)> { return {
+            //FIXME this isnt quite right, it puts all of the input bitarrays on the same offset so they overwrite each other
             _pdep_u64(
                 x >> (Indices * std::numeric_limits<T>::digits) / sizeof...(Indices),
                 short_mask<sizeof...(Indices), sizeof...(Indices) - 1 - Indices * BITS_PER_WORD % sizeof...(Indices)>()
