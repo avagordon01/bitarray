@@ -1,0 +1,6 @@
+data() to get access to underlying array
+rotl, rotr, increment, decrement?
+make the 1 hot bit independent testing more usable
+write slow+correct implementations for testing/fuzzing
+complete the implementation of general map function
+https://github.com/ClaasBontus/bitset2
