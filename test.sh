@@ -1,9 +1,9 @@
+#!/usr/bin/env bash
+if [ ! -d subprojects ]; then
+    meson wrap install gtest
+fi
 if [ ! -d out ]; then
     CXX=clang++ \
-    meson out \
-    -Db_sanitize=address -Db_lundef=false \
-    --buildtype debugoptimized
+    meson out
 fi
-ninja -C out &&
-out/divide-test &&
-out/bitarray-test
+meson test -C out --print-errorlogs

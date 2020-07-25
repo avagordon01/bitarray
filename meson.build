@@ -1,12 +1,18 @@
-project('bitarray', 'cpp')
+project('bitarray', 'cpp',
+  default_options: [
+    'buildtype=debugoptimized',
+    'warning_level=3',
+    'werror=true',
+    'cpp_std=c++17',
+    'b_sanitize=address,undefined',
+    'b_lundef=false',
+  ]
+)
 
 add_project_arguments(
   '-mbmi2',
-  '-Werror', '-Wall', '-Wextra', '-Wpedantic',
-  '-fsanitize=implicit-conversion', '-fsanitize=integer', '-fsanitize=undefined',
-  '-std=c++17',
   language: 'cpp',
 )
 
-executable('bitarray-test', 'bitarray-test.cc')
-executable('divide-test', 'divide-test.cc')
+gtest = subproject('gtest').get_variable('gtest_main_dep')
+test('bitarray-test', executable('bitarray-test', 'bitarray-test.cc', dependencies: [gtest]))

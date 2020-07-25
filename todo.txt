@@ -1,6 +1,5 @@
 data() to get access to underlying array
-rotl, rotr, increment, decrement?
-make the 1 hot bit independent testing more usable
-write slow+correct implementations for testing/fuzzing
-complete the implementation of general map function
+shift, rotate, rotate_left, rotate_right, increment, decrement
+https://en.m.wikipedia.org/wiki/Circular_shift
 https://github.com/ClaasBontus/bitset2
+support for dynamic length std::vector

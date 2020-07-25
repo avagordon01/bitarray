@@ -4,265 +4,381 @@
 #include <memory>
 #include <iostream>
 #include <immintrin.h>
-#include <type_traits>
+#include <cassert>
 
+namespace {
 template<typename T>
-std::pair<T, T> euclid_divide(T x, T y) {
-    static_assert(std::is_integral<T>::value, "type parameter T to euclid_divide must be integral");
-    static_assert(std::is_signed<T>::value, "type parameter T to euclid_divide must be signed");
-    T q = x / y;
-    T r = x % y;
-    if (r < 0) {
-        if (y >= 0) {
-            r += y;
-            q -= 1;
-        } else {
-            r -= y;
-            q += 1;
-        }
+T pext(T data, T mask) {
+    if constexpr (sizeof(T) <= 4) {
+        return _pext_u32(data, mask);
+    } else if (sizeof(T) <= 8) {
+        return _pext_u64(data, mask);
     }
-    return {q, r};
 }
 
-template <size_t N, typename T = uint_fast32_t>
+template<typename T>
+T pdep(T data, T mask) {
+    if constexpr (sizeof(T) <= 4) {
+        return _pdep_u32(data, mask);
+    } else if (sizeof(T) <= 8) {
+        return _pdep_u64(data, mask);
+    }
+}
+}
+
+namespace bitarray {
+template <size_t Bits, typename WordType = size_t>
 class bitarray {
+    static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an integer type");
+    static_assert(std::numeric_limits<WordType>::digits <= 64, "storage type must be <= 64 bits wide");
+
+    static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
 public:
-    using self_type = bitarray<N, T>;
-    static_assert(std::numeric_limits<T>::is_integer, "storage type must be an integer type");
-
-    static constexpr size_t BITS_PER_WORD = std::numeric_limits<T>::digits;
-    static constexpr size_t WORDS = 1 + (N - 1) / BITS_PER_WORD;
-    static_assert(WORDS * BITS_PER_WORD >= N, "oh no");
-
-    std::array<T, WORDS> data;
-
-    bitarray() {
-        data.fill(zero());
-    }
-    bitarray(std::initializer_list<T> list) {
-        std::uninitialized_copy(list.begin(), list.begin() + WORDS, data.begin());
+    std::array<WordType, 1 + (Bits - 1) / WordBits> data {};
+    bitarray() : data {} {}
+    bitarray(std::initializer_list<WordType> list) {
+        std::uninitialized_copy(list.begin(), list.begin() + std::min(data.size(), list.size()), data.begin());
         sanitize();
     }
-    static constexpr T zero() {
-        return static_cast<T>(0);
-    };
-    static constexpr T one() {
-        return static_cast<T>(1);
-    };
-    static constexpr T ones() {
-        return ~static_cast<T>(0);
-    };
-    void sanitize() {
-        if (N % BITS_PER_WORD != 0)
-            data.back() &= ~(ones() << (N % BITS_PER_WORD));
-    };
-    bool all() const {
-        if ((data.back() | (ones() << (N % BITS_PER_WORD))) != ones())
-            return false;
-        for (size_t i = 0; i + 1 < data.size(); i++)
-            if (data[i] != ones())
-                return false;
-        return true;
-    };
-    bool any() const {
-        for (auto& x: data)
-            if (x != 0)
-                return true;
-        return false;
-    };
-    bool none() const {
-        for (auto& x: data)
-            if (x != 0)
-                return false;
-        return true;
-    };
-    size_t count() const {
-        size_t count = 0;
-        for (auto& x: data)
-            count += __builtin_popcountll(x);
-        return count;
-    };
-    size_t size() const {
-        return N;
-    };
-    size_t count_trailing_zeros() const {
-        for (size_t i = 0; i < WORDS; i++)
-            if (data[i] != 0)
-                return i * BITS_PER_WORD + __builtin_ctzll(data[i]);
-        return N;
-    };
-    size_t count_leading_zeros() const {
-        for (size_t i = WORDS; i--;)
-            if (data[i] != 0)
-                return i * BITS_PER_WORD + __builtin_clzll(data[i]) - (BITS_PER_WORD - N % BITS_PER_WORD);
-        return N;
-    };
-    friend bool operator==(const self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < WORDS; i++)
-            if (lhs.data[i] != rhs.data[i])
-                return false;
-        return true;
-    };
-    friend bool operator!=(const self_type& lhs, const self_type& rhs) {
-        return !(lhs == rhs);
-    };
-    constexpr bool operator[](size_t pos) const {
-        return (data[pos / BITS_PER_WORD] >> (pos % BITS_PER_WORD)) & 1;
-    };
-    void set() {
-        for (auto& x: data)
-            x = ones();
+    template<typename T>
+    bitarray(T other) {
+        std::copy(other.data.begin(), other.data.begin() + std::min(other.data.size(), data.size()), data.begin());
         sanitize();
-    };
-    constexpr void set(size_t pos, bool value = true) {
-        if (value) {
-            data[pos / BITS_PER_WORD] |= one() << (pos % BITS_PER_WORD);
-        } else {
-            data[pos / BITS_PER_WORD] &= ~(one() << (pos % BITS_PER_WORD));
-        }
-    };
-    void reset() {
-        for (auto& x: data)
-            x = zero();
-    };
-    void reset(size_t pos) {
-        data[pos / BITS_PER_WORD] &= ~(one() << (pos % BITS_PER_WORD));
-    };
-    void flip() {
-        for (auto& x: data)
-            x ^= ones();
-        sanitize();
-    };
-    void flip(size_t pos) {
-        data[pos / BITS_PER_WORD] ^= one() << (pos % BITS_PER_WORD);
-    };
-    friend void operator~(self_type& lhs) {
-        for (auto& x: lhs.data)
-            x = ~x;
-        lhs.sanitize();
-    };
-    friend void operator&=(self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < WORDS; i++)
-            lhs.data[i] &= rhs.data[i];
-    };
-    friend void operator|=(self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < WORDS; i++)
-            lhs.data[i] |= rhs.data[i];
-    };
-    friend void operator^=(self_type& lhs, const self_type& rhs) {
-        for (size_t i = 0; i < WORDS; i++)
-            lhs.data[i] ^= rhs.data[i];
-    };
-    friend self_type operator&(self_type& lhs, const self_type& rhs) {
-        self_type x = lhs;
-        x &= rhs;
-        return x;
-    };
-    friend self_type operator|(self_type& lhs, const self_type& rhs) {
-        self_type x = lhs;
-        x |= rhs;
-        return x;
-    };
-    friend self_type operator^(self_type& lhs, const self_type& rhs) {
-        self_type x = lhs;
-        x ^= rhs;
-        return x;
-    };
-    template<typename F, size_t M>
-    static void map(const bitarray<N, T>& input, bitarray<M, T>& output, F f, ssize_t offset) {
-        //FIXME the iteration needs to happen in the correct order to be able to happen in-place
-        //i.e. reverse iterator for shift left and forward iterator for shift right
-#pragma unroll
-        for (size_t i = 0; i < input.WORDS; i++) {
-            auto t = f(input.data[i]);
-            ssize_t start = static_cast<ssize_t>(i * input.BITS_PER_WORD * t.size()) + offset;
-            auto [start_word, start_bit] = euclid_divide<ssize_t>(start, static_cast<ssize_t>(output.BITS_PER_WORD));
-#pragma unroll
-            for (size_t j = start_word;
-                    j - start_word < t.size() &&
-                    j < output.data.size()
-                ; j++) {
-                output.data[j] |= t[j - start_word] << start_bit;
-            }
-            if (start_bit == 0)
-                continue;
-            start_word += 1;
-#pragma unroll
-            for (size_t j = start_word;
-                    j - start_word < t.size() &&
-                    j < output.data.size()
-                ; j++) {
-                output.data[j] |= t[j - start_word] >> (output.BITS_PER_WORD - start_bit);
-            }
-        };
     }
-    friend self_type operator<<(const self_type& lhs, size_t _shift) {
-        auto f = [](T x) -> std::array<T, 1> { return {x}; };
-        self_type x{};
-        map(lhs, x, f, static_cast<ssize_t>(_shift));
-        return x;
-    };
-    friend self_type operator>>(const self_type& lhs, size_t _shift) {
-        auto f = [](T x) -> std::array<T, 1> { return {x}; };
-        self_type x{};
-        map(lhs, x, f, -static_cast<ssize_t>(_shift));
-        return x;
-    };
-    void operator>>=(size_t shift) {
-        size_t i;
-        for (i = 0; i + shift / BITS_PER_WORD < WORDS; i++) {
-            data[i] = data[i + shift / BITS_PER_WORD] >> (shift % BITS_PER_WORD);
-            if (i + 1 + shift / BITS_PER_WORD < WORDS)
-                data[i] |= data[i + 1 + shift / BITS_PER_WORD] << (BITS_PER_WORD - shift % BITS_PER_WORD);
-        }
-        for (; i < WORDS; i++) {
-            data[i] = 0;
-        }
-    };
+
+private:
+    static constexpr WordType zero();
+    static constexpr WordType one();
+    static constexpr WordType ones();
+    void sanitize();
+public:
+    static constexpr size_t size();
+    bool all() const;
+    bool any() const;
+    bool none() const;
+    size_t count() const;
+    size_t count_trailing_zeros() const;
+    size_t count_leading_zeros() const;
+    void set();
+    constexpr void set(size_t pos, bool value = true);
+    void reset();
+    void reset(size_t pos);
+    void flip();
+    void flip(size_t pos);
+    void insert_at_pos(WordType x, size_t pos);
+    WordType extract_at_pos(size_t pos) const;
+    bool operator==(const bitarray<Bits, WordType>& rhs) const;
+    bool operator!=(const bitarray<Bits, WordType>& rhs) const;
+    constexpr bool operator[](size_t pos) const;
+    void operator~() const;
+    void operator&=(const bitarray<Bits, WordType>& rhs);
+    void operator|=(const bitarray<Bits, WordType>& rhs);
+    void operator^=(const bitarray<Bits, WordType>& rhs);
+    bitarray<Bits, WordType> operator&(const bitarray<Bits, WordType>& rhs) const;
+    bitarray<Bits, WordType> operator|(const bitarray<Bits, WordType>& rhs) const;
+    bitarray<Bits, WordType> operator^(const bitarray<Bits, WordType>& rhs) const;
+    bitarray<Bits, WordType> operator<<(size_t _shift) const;
+    bitarray<Bits, WordType> operator<<=(size_t _shift);
+    bitarray<Bits, WordType> operator>>(size_t _shift) const;
+    bitarray<Bits, WordType> operator>>=(size_t _shift);
+    template<size_t M, size_t O = M>
+    bitarray<O, WordType> gather(bitarray<M, WordType> mask);
+    template<size_t M>
+    bitarray<M, WordType> scatter(bitarray<M, WordType> mask);
     template <size_t Step, size_t Start>
-    static constexpr self_type mask() {
-        self_type x{};
-        for (size_t i = Start; i < N; i += Step) {
-            x.set(i);
-        }
-        return x;
-    };
-    template <size_t Step, size_t Start>
-    static constexpr T short_mask() {
-        T x{0};
-        for (size_t i = Start; i < BITS_PER_WORD; i += Step) {
-            x |= one() << i;
-        }
-        return x;
-    };
-    template <size_t... Indices>
-    static bitarray<N * sizeof...(Indices), T> interleave(std::array<bitarray<N, T>, sizeof...(Indices)> inputs) {
-        auto f = [](T x) -> std::array<T, sizeof...(Indices)> { return {
-            //FIXME this isnt quite right, it puts all of the input bitarrays on the same offset so they overwrite each other
-            _pdep_u64(
-                x >> (Indices * std::numeric_limits<T>::digits) / sizeof...(Indices),
-                short_mask<sizeof...(Indices), sizeof...(Indices) - 1 - Indices * BITS_PER_WORD % sizeof...(Indices)>()
-            )...
-        };};
-        bitarray<N * sizeof...(Indices), T> output{};
-        for (auto& input: inputs) {
-            map(input, output, f, 0);
-        }
-        return output;
-    };
-    template <size_t Step>
-    static std::array<bitarray<N / Step, T>, Step> deinterleave(bitarray<N, T> input) {
-        std::array<bitarray<N / Step, T>, Step> outputs{};
-        for (auto& x: input.data) {
-        }
-        return outputs;
-    };
+    static constexpr bitarray<Bits, WordType> mask();
+    template<size_t Len, size_t Num>
+    static bitarray<Len * Num> interleave(std::array<bitarray<Len>, Num> input);
+    template<size_t Len, size_t Num>
+    static std::array<bitarray<Len>, Num> deinterleave(bitarray<Len * Num> input);
     template <class CharT, class Traits>
-    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
-        for (ssize_t i = N; i--;) {
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const bitarray<Bits, WordType>& x) {
+        for (ssize_t i = x.size(); i--;) {
             bool bit = x[i];
             os << (bit ? '1' : '0');
         }
         return os;
-    };
+    }
 };
+
+template <size_t Bits, typename WordType>
+constexpr WordType bitarray<Bits, WordType>::zero() {
+    return static_cast<WordType>(0);
+}
+template <size_t Bits, typename WordType>
+constexpr WordType bitarray<Bits, WordType>::one() {
+    return static_cast<WordType>(1);
+}
+template <size_t Bits, typename WordType>
+constexpr WordType bitarray<Bits, WordType>::ones() {
+    return ~static_cast<WordType>(0);
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::sanitize() {
+    if (size() % WordBits != 0) {
+        data.back() &= ~(ones() << (size() % WordBits));
+    }
+}
+template <size_t Bits, typename WordType>
+constexpr size_t bitarray<Bits, WordType>::size() {
+    return Bits;
+}
+template <size_t Bits, typename WordType>
+bool bitarray<Bits, WordType>::all() const {
+    if ((data.back() | (ones() << (size() % WordBits))) != ones())
+        return false;
+    for (size_t i = 0; i + 1 < data.size(); i++)
+        if (data[i] != ones())
+            return false;
+    return true;
+}
+template <size_t Bits, typename WordType>
+bool bitarray<Bits, WordType>::any() const {
+    for (auto& x: data)
+        if (x != 0)
+            return true;
+    return false;
+}
+template <size_t Bits, typename WordType>
+bool bitarray<Bits, WordType>::none() const {
+    for (auto& x: data)
+        if (x != 0)
+            return false;
+    return true;
+}
+template <size_t Bits, typename WordType>
+size_t bitarray<Bits, WordType>::count() const {
+    size_t count = 0;
+    for (auto& x: data)
+        count += __builtin_popcountll(x);
+    return count;
+}
+template <size_t Bits, typename WordType>
+size_t bitarray<Bits, WordType>::count_trailing_zeros() const {
+    for (size_t i = 0; i < data.size(); i++)
+        if (data[i] != 0)
+            return i * WordBits + __builtin_ctzll(data[i]);
+    return size();
+}
+template <size_t Bits, typename WordType>
+size_t bitarray<Bits, WordType>::count_leading_zeros() const {
+    for (size_t i = data.size(); i--;)
+        if (data[i] != 0)
+            return i * WordBits + __builtin_clzll(data[i]) - (WordBits - size() % WordBits);
+    return size();
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::set() {
+    for (auto& x: data)
+        x = ones();
+    sanitize();
+}
+template <size_t Bits, typename WordType>
+constexpr void bitarray<Bits, WordType>::set(size_t pos, bool value) {
+    assert(pos < size());
+    if (value) {
+        data[pos / WordBits] |= one() << (pos % WordBits);
+    } else {
+        data[pos / WordBits] &= ~(one() << (pos % WordBits));
+    }
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::reset() {
+    for (auto& x: data)
+        x = zero();
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::reset(size_t pos) {
+    assert(pos < size());
+    data[pos / WordBits] &= ~(one() << (pos % WordBits));
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::flip() {
+    for (auto& x: data)
+        x ^= ones();
+    sanitize();
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::flip(size_t pos) {
+    assert(pos < size());
+    data[pos / WordBits] ^= one() << (pos % WordBits);
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::insert_at_pos(WordType x, size_t pos) {
+    assert(pos < size());
+    size_t offset = pos % WordBits;
+    data[pos / WordBits] |= x << offset;
+    if (offset != 0 && pos / WordBits + 1 < data.size()) {
+        data[pos / WordBits + 1] |= x >> (WordBits - offset);
+    }
+}
+template <size_t Bits, typename WordType>
+WordType bitarray<Bits, WordType>::extract_at_pos(size_t pos) const {
+    assert(pos < size());
+    size_t offset = pos % WordBits;
+    WordType out = data[pos / WordBits] >> offset;
+    if (offset != 0 && pos / WordBits + 1 < data.size()) {
+        out |= data[pos / WordBits + 1] << (WordBits - offset);
+    }
+    return out;
+}
+template <size_t Bits, typename WordType>
+bool bitarray<Bits, WordType>::operator==(const bitarray<Bits, WordType>& rhs) const {
+    for (size_t i = 0; i < data.size(); i++)
+        if (data[i] != rhs.data[i])
+            return false;
+    return true;
+}
+template <size_t Bits, typename WordType>
+bool bitarray<Bits, WordType>::operator!=(const bitarray<Bits, WordType>& rhs) const {
+    return !(*this == rhs);
+}
+template <size_t Bits, typename WordType>
+constexpr bool bitarray<Bits, WordType>::operator[](size_t pos) const {
+    assert(pos < size());
+    return static_cast<bool>((data[pos / WordBits] >> (pos % WordBits)) & 1);
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::operator~() const {
+    for (auto& x: data)
+        x = ~x;
+    sanitize();
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::operator&=(const bitarray<Bits, WordType>& rhs) {
+    for (size_t i = 0; i < data.size(); i++)
+        data[i] &= rhs.data[i];
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::operator|=(const bitarray<Bits, WordType>& rhs) {
+    for (size_t i = 0; i < data.size(); i++)
+        data[i] |= rhs.data[i];
+}
+template <size_t Bits, typename WordType>
+void bitarray<Bits, WordType>::operator^=(const bitarray<Bits, WordType>& rhs) {
+    for (size_t i = 0; i < data.size(); i++)
+        data[i] ^= rhs.data[i];
+    sanitize();
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator&(const bitarray<Bits, WordType>& rhs) const {
+    bitarray<Bits, WordType> x = *this;
+    x &= rhs;
+    return x;
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator|(const bitarray<Bits, WordType>& rhs) const {
+    bitarray<Bits, WordType> x = *this;
+    x |= rhs;
+    return x;
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator^(const bitarray<Bits, WordType>& rhs) const {
+    bitarray<Bits, WordType> x = *this;
+    x ^= rhs;
+    return x;
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator<<(size_t _shift) const {
+    bitarray<Bits, WordType> x{};
+    for (size_t pos = _shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
+        x.insert_at_pos(data[i], pos);
+    }
+    return x;
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator<<=(size_t _shift) {
+    bitarray<Bits, WordType> x{};
+    for (size_t pos = _shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
+        x.insert_at_pos(data[i], pos);
+    }
+    *this = x;
+    return *this;
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator>>(size_t _shift) const {
+    bitarray<Bits, WordType> x = *this;
+    x >>= _shift;
+    return x;
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::operator>>=(size_t _shift) {
+    size_t i = 0;
+    for (size_t pos = _shift; pos < size() && i < data.size(); pos += WordBits, i++) {
+        data[i] = extract_at_pos(pos);
+    }
+    for (; i < data.size(); i++) {
+        data[i] = 0;
+    }
+    return *this;
+}
+template <size_t Bits, typename WordType>
+template<size_t M, size_t O>
+bitarray<O, WordType> bitarray<Bits, WordType>::gather(bitarray<M, WordType> mask) {
+    static_assert(M <= size(), "gather operation mask length must be <= input length");
+    bitarray<O, WordType> output {};
+    for (size_t i = 0, pos = 0; i < mask.data.size(); i++) {
+        output.insert_at_pos(pext(
+            data[i],
+            mask.data[i]
+        ), pos);
+        pos += __builtin_popcountll(mask.data[i]);
+    }
+    return output;
+}
+template <size_t Bits, typename WordType>
+template <size_t Step, size_t Start>
+constexpr bitarray<Bits, WordType> bitarray<Bits, WordType>::mask() {
+    bitarray<Bits, WordType> x{};
+    for (size_t i = Start; i < size(); i += Step) {
+        x.set(i);
+    }
+    return x;
+}
+template <size_t Bits, typename WordType>
+template<size_t M>
+bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> mask) {
+    static_assert(M >= size(), "scatter operation mask length must be >= input length");
+    bitarray<M, WordType> output {};
+    for (size_t i = 0, pos = 0; i < output.data.size(); i++) {
+        output.data[i] = pdep(
+            extract_at_pos(pos),
+            mask.data[i]
+        );
+        pos += __builtin_popcountll(mask.data[i]);
+    }
+    return output;
+}
+template <size_t Bits, typename WordType>
+template<size_t Len, size_t Num>
+bitarray<Len * Num> bitarray<Bits, WordType>::interleave(std::array<bitarray<Len>, Num> input) {
+    using output_type = bitarray<Len * Num>;
+    output_type output {};
+    //TODO replace this with magic template stuff
+    std::array<output_type, Num> masks {
+        output_type::template mask<Num, 0>(),
+        output_type::template mask<Num, 1>(),
+        output_type::template mask<Num, 2>()
+    };
+    for (size_t j = 0; j < input.size(); j++) {
+        output |= input[j].template scatter<Len * Num>(masks[j]);
+    }
+    return output;
+}
+template <size_t Bits, typename WordType>
+template<size_t Len, size_t Num>
+std::array<bitarray<Len>, Num> bitarray<Bits, WordType>::deinterleave(bitarray<Len * Num> input) {
+    using mask_type = bitarray<Len * Num>;
+    std::array<bitarray<Len>, Num> output {};
+    //TODO replace this with magic template stuff
+    std::array<mask_type, Num> masks {
+        mask_type::template mask<Num, 0>(),
+        mask_type::template mask<Num, 1>(),
+        mask_type::template mask<Num, 2>()
+    };
+    for (size_t j = 0; j < output.size(); j++) {
+        output[j] = input.template gather<Len * Num, Len>(masks[j]);
+    }
+    return output;
+}
+}
