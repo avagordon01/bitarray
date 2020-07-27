@@ -70,7 +70,6 @@ TEST(bitarray, fuzz){
             for (size_t x = 0, y = 0; x < mask.size() && x < input.size() && y < output.size(); x++) {
                 if (mask[x]) {
                     expected.set(y, input[x]);
-                    ASSERT_EQ(output[y], input[x]);
                     y++;
                 }
             }
@@ -81,12 +80,14 @@ TEST(bitarray, fuzz){
             auto input = bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)};
             auto mask = bitarray::bitarray<140>{input_distribution(engine), input_distribution(engine)};
             auto output = input.template scatter<140>(mask);
+            decltype(output) expected {};
             for (size_t x = 0, y = 0; x < mask.size() && x < output.size() && y < input.size(); x++) {
                 if (mask[x]) {
-                    ASSERT_EQ(output[x], input[y]);
+                    expected.set(x, input[y]);
                     y++;
                 }
             }
+            ASSERT_EQ(output, expected);
         }
 
         {
@@ -96,9 +97,11 @@ TEST(bitarray, fuzz){
                 bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)},
             };
             auto output = bitarray::bitarray<128>::interleave(inputs);
+            decltype(output) expected {};
             for (size_t x = 0; x < output.size(); x++) {
-                ASSERT_EQ(output[x], inputs[x % 3][x / 3]);
+                expected.set(x, inputs[x % 3][x / 3]);
             }
+            ASSERT_EQ(output, expected);
             auto outputs = bitarray::bitarray<128>::deinterleave<128, 3>(output);
             ASSERT_EQ(outputs, inputs);
         }

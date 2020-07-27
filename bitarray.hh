@@ -335,6 +335,18 @@ constexpr bitarray<Bits, WordType> bitarray<Bits, WordType>::mask() {
     }
     return x;
 }
+template<size_t Len, size_t... Is>
+std::array<bitarray<Len>, sizeof...(Is)> all_masks_inner(std::index_sequence<Is...>) {
+    std::array<bitarray<Len>, sizeof...(Is)> masks;
+    size_t i = 0;
+    (void(masks[i++] = (bitarray<Len>::template mask<sizeof...(Is), Is>())) , ...);
+    return masks;
+};
+template<size_t Len, size_t Num>
+std::array<bitarray<Len>, Num> all_masks() {
+    using seq = std::make_index_sequence<Num>;
+    return all_masks_inner<Len>(seq());
+};
 template <size_t Bits, typename WordType>
 template<size_t M>
 bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> mask) {
@@ -352,14 +364,8 @@ bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> ma
 template <size_t Bits, typename WordType>
 template<size_t Len, size_t Num>
 bitarray<Len * Num> bitarray<Bits, WordType>::interleave(std::array<bitarray<Len>, Num> input) {
-    using output_type = bitarray<Len * Num>;
-    output_type output {};
-    //TODO replace this with magic template stuff
-    std::array<output_type, Num> masks {
-        output_type::template mask<Num, 0>(),
-        output_type::template mask<Num, 1>(),
-        output_type::template mask<Num, 2>()
-    };
+    bitarray<Len * Num> output {};
+    std::array<bitarray<Len * Num>, Num> masks = all_masks<Len * Num, Num>();
     for (size_t j = 0; j < input.size(); j++) {
         output |= input[j].template scatter<Len * Num>(masks[j]);
     }
@@ -368,14 +374,8 @@ bitarray<Len * Num> bitarray<Bits, WordType>::interleave(std::array<bitarray<Len
 template <size_t Bits, typename WordType>
 template<size_t Len, size_t Num>
 std::array<bitarray<Len>, Num> bitarray<Bits, WordType>::deinterleave(bitarray<Len * Num> input) {
-    using mask_type = bitarray<Len * Num>;
     std::array<bitarray<Len>, Num> output {};
-    //TODO replace this with magic template stuff
-    std::array<mask_type, Num> masks {
-        mask_type::template mask<Num, 0>(),
-        mask_type::template mask<Num, 1>(),
-        mask_type::template mask<Num, 2>()
-    };
+    std::array<bitarray<Len * Num>, Num> masks = all_masks<Len * Num, Num>();
     for (size_t j = 0; j < output.size(); j++) {
         output[j] = input.template gather<Len * Num, Len>(masks[j]);
     }
