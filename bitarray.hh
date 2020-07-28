@@ -125,7 +125,7 @@ constexpr size_t bitarray<Bits, WordType>::size() {
 }
 template <size_t Bits, typename WordType>
 bool bitarray<Bits, WordType>::all() const {
-    if ((data.back() | (ones() << (size() % WordBits))) != ones())
+    if (static_cast<WordType>(data.back() | (ones() << (size() % WordBits))) != ones())
         return false;
     for (size_t i = 0; i + 1 < data.size(); i++)
         if (data[i] != ones())
