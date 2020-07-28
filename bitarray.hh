@@ -164,7 +164,7 @@ template <size_t Bits, typename WordType>
 size_t bitarray<Bits, WordType>::count_leading_zeros() const {
     for (size_t i = data.size(); i--;)
         if (data[i] != 0)
-            return i * WordBits + __builtin_clzll(data[i]) - (WordBits - size() % WordBits);
+            return size() - (i * WordBits + WordBits - __builtin_clzll(data[i]));
     return size();
 }
 template <size_t Bits, typename WordType>

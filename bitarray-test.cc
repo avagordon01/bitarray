@@ -16,14 +16,24 @@ TEST(bitarray, basic_functions){
     ASSERT_TRUE(!(T{0LLU, 0LLU, 0LLU}).any());
     ASSERT_TRUE((T{1LLU, 0LLU, 0LLU}).any());
     ASSERT_EQ((T{3LLU, 2LLU, 1LLU}).count(), 4);
-    ASSERT_EQ((T{0LLU, 1LLU << 10, 0LLU}).count_trailing_zeros(), 64 + 10);
-    ASSERT_EQ((T{0LLU, 1LLU << 10, 0LLU}).count_leading_zeros(), 129 - 64 - 11);
 }
 
 size_t seed = 0xfeed;
 size_t num_trials = 1'000;
 std::mt19937 engine(seed);
 std::uniform_int_distribution<uint64_t> input_distribution;
+
+TEST(bitarray, fuzz_count){
+    constexpr size_t len = 128 + 7;
+    std::uniform_int_distribution<size_t> set_distribution(0, len - 1);
+    for(size_t i = 0; i < num_trials; i++) {
+        bitarray::bitarray<len> x {};
+        size_t pos = set_distribution(engine);
+        x.set(pos);
+        ASSERT_EQ(x.count_leading_zeros(), len - 1 - pos);
+        ASSERT_EQ(x.count_trailing_zeros(), pos);
+    }
+}
 
 TEST(bitarray, fuzz_shift){
     std::uniform_int_distribution<size_t> shift_distribution(0, 128);
