@@ -1,3 +1,4 @@
+#include <cstring>
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -79,15 +80,18 @@ class bitarray {
     static_assert(std::numeric_limits<WordType>::digits <= 64, "storage type must be <= 64 bits wide");
 
     static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
+    static constexpr size_t Words = 1 + (Bits - 1) / WordBits;
+    static_assert(Words * WordBits >= Bits);
 public:
-    std::array<WordType, 1 + (Bits - 1) / WordBits> data {};
+    std::array<WordType, Words> data {};
     bitarray() : data {} {}
-    bitarray(std::initializer_list<WordType> list) {
-        std::uninitialized_copy(list.begin(), list.begin() + std::min(data.size(), list.size()), data.begin());
+    template<typename T>
+    bitarray(std::initializer_list<T> list) : data {} {
+        std::memcpy(data.data(), list.begin(), std::min(sizeof(T) * list.size(), sizeof(WordType) * data.size()));
         sanitize();
     }
     template<typename T>
-    bitarray(T other) {
+    bitarray(T other) : data {} {
         std::copy(other.data.begin(), other.data.begin() + std::min(other.data.size(), data.size()), data.begin());
         sanitize();
     }
