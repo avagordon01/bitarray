@@ -15,4 +15,19 @@ add_project_arguments(
 )
 
 gtest = subproject('gtest').get_variable('gtest_main_dep')
-test('bitarray-test', executable('bitarray-test', 'bitarray-test.cc', dependencies: [gtest]))
+
+test_args = [
+  {'name': 'u64', 'args': ['-DTYPE=uint64_t']},
+  {'name': 'u32', 'args': ['-DTYPE=uint32_t']},
+  {'name': 'u16', 'args': ['-DTYPE=uint16_t']},
+  {'name': 'u8',  'args': ['-DTYPE=uint8_t']},
+  #{'name': 'i64', 'args': ['-DTYPE=int64_t']},
+  #{'name': 'i32', 'args': ['-DTYPE=int32_t']},
+  #{'name': 'i16', 'args': ['-DTYPE=int16_t']},
+  #{'name': 'i8',  'args': ['-DTYPE=int8_t']},
+]
+foreach test_arg : test_args
+  test('bitarray-test-' + test_arg['name'],
+    executable('bitarray-test-' + test_arg['name'], 'bitarray-test.cc', dependencies: [gtest], cpp_args: [test_arg['args']])
+  )
+endforeach

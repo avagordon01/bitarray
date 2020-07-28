@@ -3,15 +3,21 @@
 #include <random>
 #include <gtest/gtest.h>
 
+#ifdef TYPE
+using type = TYPE;
+#else
+using type = uint64_t;
+#endif
+
 TEST(bitarray, basic_functions){
-    using T = bitarray::bitarray<129>;
+    using T = bitarray::bitarray<129, type>;
     ASSERT_TRUE((T{-1LLU, -1LLU, -1LLU}).all());
-    ASSERT_TRUE((T{0, 0, 0}).none());
-    ASSERT_TRUE(!(T{0, 0, 0}).any());
-    ASSERT_TRUE((T{1, 0, 0}).any());
-    ASSERT_EQ((T{3, 2, 1}).count(), 4);
-    ASSERT_EQ((T{0, 1 << 10, 0}).count_trailing_zeros(), 64 + 10);
-    ASSERT_EQ((T{0, 1 << 10, 0}).count_leading_zeros(), 129 - 64 - 11);
+    ASSERT_TRUE((T{0LLU, 0LLU, 0LLU}).none());
+    ASSERT_TRUE(!(T{0LLU, 0LLU, 0LLU}).any());
+    ASSERT_TRUE((T{1LLU, 0LLU, 0LLU}).any());
+    ASSERT_EQ((T{3LLU, 2LLU, 1LLU}).count(), 4);
+    ASSERT_EQ((T{0LLU, 1LLU << 10, 0LLU}).count_trailing_zeros(), 64 + 10);
+    ASSERT_EQ((T{0LLU, 1LLU << 10, 0LLU}).count_leading_zeros(), 129 - 64 - 11);
 }
 
 size_t seed = 0xfeed;
