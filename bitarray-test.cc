@@ -11,9 +11,9 @@ using type = uint64_t;
 
 TEST(bitarray, basic_functions){
     using T = bitarray::bitarray<129, type>;
-    ASSERT_TRUE((T{-1LLU, -1LLU, -1LLU}).all());
+    ASSERT_TRUE((T{~0LLU, ~0LLU, ~0LLU}).all());
     ASSERT_TRUE((T{0LLU, 0LLU, 0LLU}).none());
-    ASSERT_TRUE(!(T{0LLU, 0LLU, 0LLU}).any());
+    ASSERT_FALSE((T{0LLU, 0LLU, 0LLU}).any());
     ASSERT_TRUE((T{1LLU, 0LLU, 0LLU}).any());
     ASSERT_EQ((T{3LLU, 2LLU, 1LLU}).count(), 4);
 }

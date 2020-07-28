@@ -24,6 +24,52 @@ T pdep(T data, T mask) {
         return _pdep_u64(data, mask);
     }
 }
+
+template<typename T>
+size_t popcount(T x) {
+    if constexpr (sizeof(T) == sizeof(long long int)) {
+        return __builtin_popcountll(x);
+    } else if constexpr (sizeof(T) == sizeof(long int)) {
+        return __builtin_popcountl(x);
+    } else if constexpr (sizeof(T) <= sizeof(int)) {
+        return __builtin_popcount(x);
+    }
+}
+
+template<typename T>
+size_t ctz(T x) {
+    if constexpr (sizeof(T) == sizeof(long long int)) {
+        return __builtin_ctzll(x);
+    } else if constexpr (sizeof(T) == sizeof(long int)) {
+        return __builtin_ctzl(x);
+    } else if constexpr (sizeof(T) <= sizeof(int)) {
+        return __builtin_ctz(x);
+    }
+}
+
+template<typename T>
+size_t clz(T x) {
+    if constexpr (sizeof(T) == sizeof(long long int)) {
+        return __builtin_clzll(x);
+    } else if constexpr (sizeof(T) == sizeof(long int)) {
+        return __builtin_clzl(x);
+    } else if constexpr (sizeof(T) <= sizeof(int)) {
+        return __builtin_clz(x);
+    }
+}
+
+template<typename T>
+T bswap(T x) {
+    if constexpr (sizeof(T) == 8) {
+        return __builtin_bswap64(x);
+    } else if constexpr (sizeof(T) == 4) {
+        return __builtin_bswap32(x);
+    } else if constexpr (sizeof(T) == 2) {
+        return __builtin_bswap16(x);
+    } else if constexpr (sizeof(T) == 1) {
+        return x;
+    }
+}
 }
 
 namespace bitarray {
@@ -150,21 +196,21 @@ template <size_t Bits, typename WordType>
 size_t bitarray<Bits, WordType>::count() const {
     size_t count = 0;
     for (auto& x: data)
-        count += __builtin_popcountll(x);
+        count += popcount(x);
     return count;
 }
 template <size_t Bits, typename WordType>
 size_t bitarray<Bits, WordType>::count_trailing_zeros() const {
     for (size_t i = 0; i < data.size(); i++)
         if (data[i] != 0)
-            return i * WordBits + __builtin_ctzll(data[i]);
+            return i * WordBits + ctz(data[i]);
     return size();
 }
 template <size_t Bits, typename WordType>
 size_t bitarray<Bits, WordType>::count_leading_zeros() const {
     for (size_t i = data.size(); i--;)
         if (data[i] != 0)
-            return size() - (i * WordBits + WordBits - __builtin_clzll(data[i]));
+            return size() - (i * WordBits + WordBits - clz(data[i]));
     return size();
 }
 template <size_t Bits, typename WordType>
@@ -322,7 +368,7 @@ bitarray<O, WordType> bitarray<Bits, WordType>::gather(bitarray<M, WordType> mas
             data[i],
             mask.data[i]
         ), pos);
-        pos += __builtin_popcountll(mask.data[i]);
+        pos += popcount(mask.data[i]);
     }
     return output;
 }
@@ -355,7 +401,7 @@ bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> ma
             extract_at_pos(pos),
             mask.data[i]
         );
-        pos += __builtin_popcountll(mask.data[i]);
+        pos += popcount(mask.data[i]);
     }
     return output;
 }
