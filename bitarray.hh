@@ -396,11 +396,11 @@ std::array<bitarray<Len>, sizeof...(Is)> all_masks_inner(std::index_sequence<Is.
     return std::array<bitarray<Len>, sizeof...(Is)> {
         bitarray<Len>::template mask<sizeof...(Is), Is>()...
     };
-};
+}
 template<size_t Len, size_t Num>
 std::array<bitarray<Len>, Num> all_masks() {
     return all_masks_inner<Len>(std::make_index_sequence<Num>());
-};
+}
 template <size_t Bits, typename WordType>
 template<size_t M>
 bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> mask) {
