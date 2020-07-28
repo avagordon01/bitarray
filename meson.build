@@ -21,10 +21,10 @@ test_args = [
   {'name': 'u32', 'args': ['-DTYPE=uint32_t']},
   {'name': 'u16', 'args': ['-DTYPE=uint16_t']},
   {'name': 'u8',  'args': ['-DTYPE=uint8_t']},
-  #{'name': 'i64', 'args': ['-DTYPE=int64_t']},
-  #{'name': 'i32', 'args': ['-DTYPE=int32_t']},
-  #{'name': 'i16', 'args': ['-DTYPE=int16_t']},
-  #{'name': 'i8',  'args': ['-DTYPE=int8_t']},
+  {'name': 'i64', 'args': ['-DTYPE=int64_t']},
+  {'name': 'i32', 'args': ['-DTYPE=int32_t']},
+  {'name': 'i16', 'args': ['-DTYPE=int16_t']},
+  {'name': 'i8',  'args': ['-DTYPE=int8_t']},
 ]
 foreach test_arg : test_args
   test('bitarray-test-' + test_arg['name'],

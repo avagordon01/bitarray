@@ -166,7 +166,7 @@ constexpr WordType bitarray<Bits, WordType>::ones() {
 template <size_t Bits, typename WordType>
 void bitarray<Bits, WordType>::sanitize() {
     if (size() % WordBits != 0) {
-        data.back() &= ~(ones() << (size() % WordBits));
+        data.back() &= ones() >> (WordBits - size() % WordBits);
     }
 }
 template <size_t Bits, typename WordType>
@@ -175,11 +175,17 @@ constexpr size_t bitarray<Bits, WordType>::size() {
 }
 template <size_t Bits, typename WordType>
 bool bitarray<Bits, WordType>::all() const {
-    if (static_cast<WordType>(data.back() | (ones() << (size() % WordBits))) != ones())
-        return false;
-    for (size_t i = 0; i + 1 < data.size(); i++)
-        if (data[i] != ones())
+    if (size() % WordBits == 0) {
+        for (size_t i = 0; i < data.size(); i++)
+            if (data[i] != ones())
+                return false;
+    } else {
+        if (data.back() != ones() >> (WordBits - size() % WordBits))
             return false;
+        for (size_t i = 0; i + 1 < data.size(); i++)
+            if (data[i] != ones())
+                return false;
+    }
     return true;
 }
 template <size_t Bits, typename WordType>
