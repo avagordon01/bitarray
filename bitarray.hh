@@ -337,15 +337,13 @@ constexpr bitarray<Bits, WordType> bitarray<Bits, WordType>::mask() {
 }
 template<size_t Len, size_t... Is>
 std::array<bitarray<Len>, sizeof...(Is)> all_masks_inner(std::index_sequence<Is...>) {
-    std::array<bitarray<Len>, sizeof...(Is)> masks;
-    size_t i = 0;
-    (void(masks[i++] = (bitarray<Len>::template mask<sizeof...(Is), Is>())) , ...);
-    return masks;
+    return std::array<bitarray<Len>, sizeof...(Is)> {
+        bitarray<Len>::template mask<sizeof...(Is), Is>()...
+    };
 };
 template<size_t Len, size_t Num>
 std::array<bitarray<Len>, Num> all_masks() {
-    using seq = std::make_index_sequence<Num>;
-    return all_masks_inner<Len>(seq());
+    return all_masks_inner<Len>(std::make_index_sequence<Num>());
 };
 template <size_t Bits, typename WordType>
 template<size_t M>
