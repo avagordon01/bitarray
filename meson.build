@@ -14,7 +14,7 @@ add_project_arguments(
   language: 'cpp',
 )
 
-gtest = subproject('gtest').get_variable('gtest_main_dep')
+gtest = dependency('gtest_main')
 
 test_args = [
   {'name': 'u64', 'args': ['-DTYPE=uint64_t']},
