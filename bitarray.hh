@@ -382,24 +382,15 @@ bitarray<O, WordType> bitarray<Bits, WordType>::gather(bitarray<M, WordType> mas
     }
     return output;
 }
-template <size_t Bits, typename WordType>
-template <size_t Step, size_t Start>
-constexpr bitarray<Bits, WordType> bitarray<Bits, WordType>::mask() {
-    bitarray<Bits, WordType> x{};
-    for (size_t i = Start; i < size(); i += Step) {
-        x.set(i);
+template<size_t Len, size_t Num>
+constexpr std::array<bitarray<Len>, Num> interleave_masks() {
+    std::array<bitarray<Len>, Num> x{};
+    for (size_t i = 0; i < Num; i++) {
+        for (size_t j = i; j < Len; j += Num) {
+            x[i].set(j);
+        }
     }
     return x;
-}
-template<size_t Len, size_t... Is>
-std::array<bitarray<Len>, sizeof...(Is)> all_masks_inner(std::index_sequence<Is...>) {
-    return std::array<bitarray<Len>, sizeof...(Is)> {
-        bitarray<Len>::template mask<sizeof...(Is), Is>()...
-    };
-}
-template<size_t Len, size_t Num>
-std::array<bitarray<Len>, Num> all_masks() {
-    return all_masks_inner<Len>(std::make_index_sequence<Num>());
 }
 template <size_t Bits, typename WordType>
 template<size_t M>
@@ -419,7 +410,7 @@ template <size_t Bits, typename WordType>
 template<size_t Len, size_t Num>
 bitarray<Len * Num> bitarray<Bits, WordType>::interleave(std::array<bitarray<Len>, Num> input) {
     bitarray<Len * Num> output {};
-    std::array<bitarray<Len * Num>, Num> masks = all_masks<Len * Num, Num>();
+    std::array<bitarray<Len * Num>, Num> masks = interleave_masks<Len * Num, Num>();
     for (size_t j = 0; j < input.size(); j++) {
         output |= input[j].template scatter<Len * Num>(masks[j]);
     }
@@ -429,7 +420,7 @@ template <size_t Bits, typename WordType>
 template<size_t Len, size_t Num>
 std::array<bitarray<Len>, Num> bitarray<Bits, WordType>::deinterleave(bitarray<Len * Num> input) {
     std::array<bitarray<Len>, Num> output {};
-    std::array<bitarray<Len * Num>, Num> masks = all_masks<Len * Num, Num>();
+    std::array<bitarray<Len * Num>, Num> masks = interleave_masks<Len * Num, Num>();
     for (size_t j = 0; j < output.size(); j++) {
         output[j] = input.template gather<Len * Num, Len>(masks[j]);
     }
