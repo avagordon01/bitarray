@@ -55,6 +55,20 @@ TEST(bitarray, fuzz_shift){
     }
 }
 
+TEST(bitarray, fuzz_rotate){
+    std::uniform_int_distribution<size_t> shift_distribution(-128, 128);
+    for(size_t i = 0; i < num_trials; i++) {
+        auto input = bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)};
+        auto shift = shift_distribution(engine);
+        auto output = input.rotl(shift);
+        decltype(output) expected {};
+        for (size_t x = 0; x < input.size(); x++) {
+            expected.set((x + shift) % input.size(), input[x]);
+        }
+        ASSERT_EQ(output, expected);
+    }
+}
+
 TEST(bitarray, fuzz_ctors){
     for(size_t i = 0; i < num_trials; i++) {
         constexpr size_t l = 120;

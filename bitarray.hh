@@ -50,8 +50,6 @@ public:
     bool has_single_bit() const;
     //TODO
     //byteswap
-    //rotl
-    //rotr
     void set();
     constexpr void set(size_t pos, bool value = true);
     void reset();
@@ -74,6 +72,8 @@ public:
     bitarray<Bits, WordType> operator<<=(size_t _shift);
     bitarray<Bits, WordType> operator>>(size_t _shift) const;
     bitarray<Bits, WordType> operator>>=(size_t _shift);
+    bitarray<Bits, WordType> rotl(int _shift);
+    bitarray<Bits, WordType> rotr(int _shift);
     template<size_t M, size_t O = M>
     bitarray<O, WordType> gather(bitarray<M, WordType> mask);
     template<size_t M>
@@ -330,6 +330,21 @@ bitarray<Bits, WordType> bitarray<Bits, WordType>::operator>>=(size_t _shift) {
     return *this;
 }
 template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::rotl(int _shift) {
+    if (_shift < 0) {
+        return rotr(-_shift);
+    }
+    _shift %= size();
+    return (*this << _shift) | (*this >> (size() - _shift));
+}
+template <size_t Bits, typename WordType>
+bitarray<Bits, WordType> bitarray<Bits, WordType>::rotr(int _shift) {
+    if (_shift < 0) {
+        return rotl(-_shift);
+    }
+    _shift %= size();
+    return (*this >> _shift) | (*this << (size() - _shift));
+}
 
 
 

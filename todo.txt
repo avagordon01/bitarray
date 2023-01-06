@@ -1,5 +1,4 @@
 data() to get access to underlying array
-shift, rotate, rotate_left, rotate_right, increment, decrement
-https://en.m.wikipedia.org/wiki/Circular_shift
+increment, decrement
 https://github.com/ClaasBontus/bitset2
 support for dynamic length std::vector
