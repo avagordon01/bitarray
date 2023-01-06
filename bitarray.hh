@@ -8,30 +8,12 @@
 #include <cassert>
 #include <bit>
 
-namespace {
-template<typename T>
-T pext(T data, T mask) {
-    if constexpr (sizeof(T) <= 4) {
-        return _pext_u32(data, mask);
-    } else if (sizeof(T) <= 8) {
-        return _pext_u64(data, mask);
-    }
-}
-
-template<typename T>
-T pdep(T data, T mask) {
-    if constexpr (sizeof(T) <= 4) {
-        return _pdep_u32(data, mask);
-    } else if (sizeof(T) <= 8) {
-        return _pdep_u64(data, mask);
-    }
-}
-}
-
 namespace bitarray {
 template <size_t Bits, typename WordType = size_t>
 class bitarray {
     static_assert(std::numeric_limits<WordType>::digits <= 64, "storage type must be <= 64 bits wide");
+    static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an unsigned integer");
+    static_assert(!std::numeric_limits<WordType>::is_signed, "storage type must be an unsigned integer");
 
     static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
     static constexpr size_t Words = 1 + (Bits - 1) / WordBits;
@@ -348,6 +330,29 @@ bitarray<Bits, WordType> bitarray<Bits, WordType>::operator>>=(size_t _shift) {
     return *this;
 }
 template <size_t Bits, typename WordType>
+
+
+
+namespace {
+template<typename T>
+T pext(T data, T mask) {
+    if constexpr (sizeof(T) <= 4) {
+        return _pext_u32(data, mask);
+    } else if (sizeof(T) <= 8) {
+        return _pext_u64(data, mask);
+    }
+}
+
+template<typename T>
+T pdep(T data, T mask) {
+    if constexpr (sizeof(T) <= 4) {
+        return _pdep_u32(data, mask);
+    } else if (sizeof(T) <= 8) {
+        return _pdep_u64(data, mask);
+    }
+}
+}
+template <size_t Bits, typename WordType>
 template<size_t M, size_t O>
 bitarray<O, WordType> bitarray<Bits, WordType>::gather(bitarray<M, WordType> mask) {
     static_assert(M <= size(), "gather operation mask length must be <= input length");
@@ -360,16 +365,6 @@ bitarray<O, WordType> bitarray<Bits, WordType>::gather(bitarray<M, WordType> mas
         pos += std::popcount(mask.data[i]);
     }
     return output;
-}
-template<size_t Len, size_t Num>
-constexpr std::array<bitarray<Len>, Num> interleave_masks() {
-    std::array<bitarray<Len>, Num> x{};
-    for (size_t i = 0; i < Num; i++) {
-        for (size_t j = i; j < Len; j += Num) {
-            x[i].set(j);
-        }
-    }
-    return x;
 }
 template <size_t Bits, typename WordType>
 template<size_t M>
@@ -384,6 +379,18 @@ bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> ma
         pos += std::popcount(mask.data[i]);
     }
     return output;
+}
+
+
+template<size_t Len, size_t Num>
+constexpr std::array<bitarray<Len>, Num> interleave_masks() {
+    std::array<bitarray<Len>, Num> x{};
+    for (size_t i = 0; i < Num; i++) {
+        for (size_t j = i; j < Len; j += Num) {
+            x[i].set(j);
+        }
+    }
+    return x;
 }
 template <size_t Bits, typename WordType>
 template<size_t Len, size_t Num>

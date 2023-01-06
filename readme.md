@@ -10,12 +10,13 @@ It can be a drop-in replacement for bitset, because it has a strict superset of 
 Faster, because by default it uses the largest word size available (although most platforms define long (which std::bitset uses) to also be the largest word size available), potentially doing half as many instructions for long bitsets. The word type can also be changed if you need to reduce the wasted bits of non-multiple-of-64(/32)bit sized bitarrays.
 
 The added features are (or will be):
+ - Change the underlying container type (e.g. std::array, std::vector, std::span, ...)
  - Directly access the underlying words
    - bitset only allows you to get the lowest unsigned long long's worth of bits
    - or output to a string of '1's and '0's...
  - Easily change the underlying word type for whatever performance/storage needs
- - Extended with useful bitwise operations
-   - count\_{leading,trailing}\_zeros, supported by [clz and ctz](https://en.wikipedia.org/wiki/Find_first_set)
+ - Supports C++20 <bit> bitwise operations
+   - count\_{l,r}\_{zero,one}
    - deposit/extract and interleave/deinterleave, supported by [pdep/pext](https://en.wikipedia.org/wiki/Bit\_Manipulation\_Instruction\_Sets#BMI2)
  - Based on an efficient map function so you can easily extend the bitarray with your own operations
 
@@ -25,7 +26,7 @@ Initially, you might expect a bitarray with N words to have to perform N shift i
 
 ## Dependencies
 
- - A C++17 compiler, we use clang++ by default for better sanitisation
+ - A C++20 compiler
  - Target CPU with support for the [BMI2 instruction set](https://en.wikipedia.org/wiki/Bit\_Manipulation\_Instruction\_Sets#BMI2) (for pdep/pext support, which deposit/extract and interleave/deinterleave rely on)
 
 For testing and installing:
@@ -33,7 +34,7 @@ For testing and installing:
 
 ## Usage
 
-Include `bitarray.hpp` and use `bitarray<N>` instead of `std::bitset<N>`
+Include `bitarray.hh` and use `bitarray<N>` instead of `std::bitset<N>`
 
 ## Building and Testing
 
