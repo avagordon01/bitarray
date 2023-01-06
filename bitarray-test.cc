@@ -30,8 +30,8 @@ TEST(bitarray, fuzz_count){
         bitarray::bitarray<len> x {};
         size_t pos = set_distribution(engine);
         x.set(pos);
-        ASSERT_EQ(x.count_leading_zeros(), len - 1 - pos);
-        ASSERT_EQ(x.count_trailing_zeros(), pos);
+        ASSERT_EQ(x.countl_zero(), len - 1 - pos);
+        ASSERT_EQ(x.countr_zero(), pos);
     }
 }
 

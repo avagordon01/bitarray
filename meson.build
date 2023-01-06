@@ -3,7 +3,7 @@ project('bitarray', 'cpp',
     'buildtype=debugoptimized',
     'warning_level=3',
     'werror=true',
-    'cpp_std=c++17',
+    'cpp_std=c++20',
     'b_sanitize=address,undefined',
     'b_lundef=false',
   ]

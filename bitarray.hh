@@ -6,6 +6,7 @@
 #include <iostream>
 #include <immintrin.h>
 #include <cassert>
+#include <bit>
 
 namespace {
 template<typename T>
@@ -23,52 +24,6 @@ T pdep(T data, T mask) {
         return _pdep_u32(data, mask);
     } else if (sizeof(T) <= 8) {
         return _pdep_u64(data, mask);
-    }
-}
-
-template<typename T>
-size_t popcount(T x) {
-    if constexpr (sizeof(T) == sizeof(long long int)) {
-        return __builtin_popcountll(x);
-    } else if constexpr (sizeof(T) == sizeof(long int)) {
-        return __builtin_popcountl(x);
-    } else if constexpr (sizeof(T) <= sizeof(int)) {
-        return __builtin_popcount(x);
-    }
-}
-
-template<typename T>
-size_t ctz(T x) {
-    if constexpr (sizeof(T) == sizeof(long long int)) {
-        return __builtin_ctzll(x);
-    } else if constexpr (sizeof(T) == sizeof(long int)) {
-        return __builtin_ctzl(x);
-    } else if constexpr (sizeof(T) <= sizeof(int)) {
-        return __builtin_ctz(x);
-    }
-}
-
-template<typename T>
-size_t clz(T x) {
-    if constexpr (sizeof(T) == sizeof(long long int)) {
-        return __builtin_clzll(x);
-    } else if constexpr (sizeof(T) == sizeof(long int)) {
-        return __builtin_clzl(x);
-    } else if constexpr (sizeof(T) <= sizeof(int)) {
-        return __builtin_clz(x);
-    }
-}
-
-template<typename T>
-T bswap(T x) {
-    if constexpr (sizeof(T) == 8) {
-        return __builtin_bswap64(x);
-    } else if constexpr (sizeof(T) == 4) {
-        return __builtin_bswap32(x);
-    } else if constexpr (sizeof(T) == 2) {
-        return __builtin_bswap16(x);
-    } else if constexpr (sizeof(T) == 1) {
-        return x;
     }
 }
 }
@@ -107,8 +62,15 @@ public:
     bool any() const;
     bool none() const;
     size_t count() const;
-    size_t count_trailing_zeros() const;
-    size_t count_leading_zeros() const;
+    size_t countr_zero() const;
+    size_t countl_zero() const;
+    //TODO
+    //countl_one
+    //countr_one
+    //has_single_bit
+    //byteswap
+    //rotl
+    //rotr
     void set();
     constexpr void set(size_t pos, bool value = true);
     void reset();
@@ -206,21 +168,21 @@ template <size_t Bits, typename WordType>
 size_t bitarray<Bits, WordType>::count() const {
     size_t count = 0;
     for (auto& x: data)
-        count += popcount(x);
+        count += std::popcount(x);
     return count;
 }
 template <size_t Bits, typename WordType>
-size_t bitarray<Bits, WordType>::count_trailing_zeros() const {
+size_t bitarray<Bits, WordType>::countr_zero() const {
     for (size_t i = 0; i < data.size(); i++)
         if (data[i] != 0)
-            return i * WordBits + ctz(data[i]);
+            return i * WordBits + std::countr_zero(data[i]);
     return size();
 }
 template <size_t Bits, typename WordType>
-size_t bitarray<Bits, WordType>::count_leading_zeros() const {
+size_t bitarray<Bits, WordType>::countl_zero() const {
     for (size_t i = data.size(); i--;)
         if (data[i] != 0)
-            return size() - (i * WordBits + WordBits - clz(data[i]));
+            return size() - (i * WordBits + WordBits - std::countl_zero(data[i]));
     return size();
 }
 template <size_t Bits, typename WordType>
@@ -378,7 +340,7 @@ bitarray<O, WordType> bitarray<Bits, WordType>::gather(bitarray<M, WordType> mas
             data[i],
             mask.data[i]
         ), pos);
-        pos += popcount(mask.data[i]);
+        pos += std::popcount(mask.data[i]);
     }
     return output;
 }
@@ -402,7 +364,7 @@ bitarray<M, WordType> bitarray<Bits, WordType>::scatter(bitarray<M, WordType> ma
             extract_at_pos(pos),
             mask.data[i]
         );
-        pos += popcount(mask.data[i]);
+        pos += std::popcount(mask.data[i]);
     }
     return output;
 }
