@@ -31,7 +31,6 @@ T pdep(T data, T mask) {
 namespace bitarray {
 template <size_t Bits, typename WordType = size_t>
 class bitarray {
-    static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an integer type");
     static_assert(std::numeric_limits<WordType>::digits <= 64, "storage type must be <= 64 bits wide");
 
     static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
@@ -61,13 +60,13 @@ public:
     bool all() const;
     bool any() const;
     bool none() const;
-    size_t count() const;
-    size_t countr_zero() const;
-    size_t countl_zero() const;
+    int count() const;
+    int countl_zero() const;
+    int countl_one() const;
+    int countr_zero() const;
+    int countr_one() const;
+    bool has_single_bit() const;
     //TODO
-    //countl_one
-    //countr_one
-    //has_single_bit
     //byteswap
     //rotl
     //rotr
@@ -165,24 +164,42 @@ bool bitarray<Bits, WordType>::none() const {
     return true;
 }
 template <size_t Bits, typename WordType>
-size_t bitarray<Bits, WordType>::count() const {
-    size_t count = 0;
+int bitarray<Bits, WordType>::count() const {
+    int count = 0;
     for (auto& x: data)
         count += std::popcount(x);
     return count;
 }
 template <size_t Bits, typename WordType>
-size_t bitarray<Bits, WordType>::countr_zero() const {
+bool bitarray<Bits, WordType>::has_single_bit() const {
+    return count() == 1;
+}
+template <size_t Bits, typename WordType>
+int bitarray<Bits, WordType>::countr_zero() const {
     for (size_t i = 0; i < data.size(); i++)
         if (data[i] != 0)
             return i * WordBits + std::countr_zero(data[i]);
     return size();
 }
 template <size_t Bits, typename WordType>
-size_t bitarray<Bits, WordType>::countl_zero() const {
+int bitarray<Bits, WordType>::countr_one() const {
+    for (size_t i = 0; i < data.size(); i++)
+        if (data[i] != ones())
+            return i * WordBits + std::countr_one(data[i]);
+    return size();
+}
+template <size_t Bits, typename WordType>
+int bitarray<Bits, WordType>::countl_zero() const {
     for (size_t i = data.size(); i--;)
         if (data[i] != 0)
             return size() - (i * WordBits + WordBits - std::countl_zero(data[i]));
+    return size();
+}
+template <size_t Bits, typename WordType>
+int bitarray<Bits, WordType>::countl_one() const {
+    for (size_t i = data.size(); i--;)
+        if (data[i] != ones())
+            return size() - (i * WordBits + WordBits - std::countl_one(data[i]));
     return size();
 }
 template <size_t Bits, typename WordType>
