@@ -15,6 +15,13 @@ T pext(T data, T mask) {
         return _pext_u32(data, mask);
     } else if (sizeof(T) <= 8) {
         return _pext_u64(data, mask);
+    } else if (sizeof(T) <= 16) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
+        T out0 = _pext_u64(data, mask);
+        T out1 = _pext_u64(data >> 64, mask >> 64);
+        return out0 | (out1 << std::popcount(static_cast<uint64_t>(mask)));
+#pragma GCC diagnostic pop
     }
 }
 
@@ -24,6 +31,13 @@ T pdep(T data, T mask) {
         return _pdep_u32(data, mask);
     } else if (sizeof(T) <= 8) {
         return _pdep_u64(data, mask);
+    } else if (sizeof(T) <= 16) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-count-overflow"
+        T out0 = _pdep_u64(data, mask);
+        T out1 = _pdep_u64(data >> std::popcount(static_cast<uint64_t>(mask)), mask >> 64);
+        return out0 | (out1 << 64);
+#pragma GCC diagnostic pop
     }
 }
 }
@@ -31,7 +45,6 @@ T pdep(T data, T mask) {
 namespace bitarray {
 template <size_t Bits, typename WordType = size_t>
 struct bitarray {
-    static_assert(std::numeric_limits<WordType>::digits <= 64, "storage type must be <= 64 bits wide");
     static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an unsigned integer");
     static_assert(!std::numeric_limits<WordType>::is_signed, "storage type must be an unsigned integer");
 
@@ -111,7 +124,11 @@ public:
     int count() const {
         int count = 0;
         for (auto& x: data)
-            count += std::popcount(x);
+            if constexpr (sizeof(WordType) <= 8) {
+                count += std::popcount(x);
+            } else if (sizeof(WordType) <= 16) {
+                count += std::popcount(static_cast<uint64_t>(x >> 64)) + std::popcount(static_cast<uint64_t>(x));
+            }
         return count;
     }
     bool has_single_bit() const {

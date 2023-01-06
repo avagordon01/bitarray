@@ -17,6 +17,7 @@ add_project_arguments(
 gtest = dependency('gtest_main')
 
 test_args = [
+  {'name': 'u128', 'args': ['-DTYPE=__uint128_t']},
   {'name': 'u64', 'args': ['-DTYPE=uint64_t']},
   {'name': 'u32', 'args': ['-DTYPE=uint32_t']},
   {'name': 'u16', 'args': ['-DTYPE=uint16_t']},
