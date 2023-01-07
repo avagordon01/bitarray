@@ -214,8 +214,11 @@ public:
     bool operator!=(const bitarray<Bits, WordType>& rhs) const {
         return !(*this == rhs);
     }
-    constexpr bool operator[](size_t pos) const {
+    constexpr bool at(size_t pos) const {
         assert(pos < size());
+        return *this[pos];
+    }
+    constexpr bool operator[](size_t pos) const {
         return static_cast<bool>((data[pos / WordBits] >> (pos % WordBits)) & 1);
     }
     void operator~() const {
