@@ -6,6 +6,7 @@
 #include <immintrin.h>
 #include <bit>
 #include <stdexcept>
+#include <algorithm>
 
 namespace {
 template<typename T>
@@ -66,9 +67,24 @@ struct bitarray {
 
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
-        for (ssize_t i = x.size(); i--;) {
-            bool bit = x[i];
-            os << (bit ? '1' : '0');
+        int base_digits = 0;
+        if (os.flags() & std::ios_base::dec) {
+            base_digits = 1; //XXX this is a hack, rather than default to decimal, we default to binary
+            os << "0b";
+        } else if (os.flags() & std::ios_base::oct) {
+            base_digits = 3;
+            os << "0o";
+        } else if (os.flags() & std::ios_base::hex) {
+            base_digits = 4;
+            os << "0x";
+        }
+        for (ssize_t i = x.size(); i -= base_digits;) {
+            unsigned char digit = 0;
+            for (int j = 0; j < base_digits; j++) {
+                digit <<= 1;
+                digit += x[i + j];
+            }
+            os << std::to_string(digit);
         }
         return os;
     }
@@ -156,6 +172,30 @@ public:
         //XXX this doesn't seem like the best way
         return (~*this).countl_zero();
     }
+    int bit_width() {
+        return size() - countl_zero();
+    }
+    self_type bit_floor() {
+        if (any())
+            return self_type{1} << (bit_width() - 1);
+        return 0;
+    }
+    self_type bit_ceil() {
+        //TODO
+    }
+    void wordswap() {
+        std::reverse(data.begin(), data.end());
+    }
+    void byteswap() {
+        wordswap();
+        for (auto& x: data) {
+            //std::byteswap(x);
+        }
+    }
+    void bitswap() {
+        byteswap();
+        //TODO bitswap
+    }
     void set() {
         for (auto& x: data)
             x = ones();
@@ -192,9 +232,9 @@ public:
         }
         data[pos / WordBits] ^= one() << (pos % WordBits);
     }
-    void insert_at_pos(WordType x, size_t pos) {
+    void set_word_at_pos(WordType x, size_t pos) {
         if (pos >= size()) {
-            throw std::out_of_range{"insert_at_pos() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+            throw std::out_of_range{"set_word_at_pos() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
         }
         size_t offset = pos % WordBits;
         data[pos / WordBits] |= x << offset;
@@ -202,9 +242,9 @@ public:
             data[pos / WordBits + 1] |= x >> (WordBits - offset);
         }
     }
-    WordType extract_at_pos(size_t pos) const {
+    WordType get_word_at_pos(size_t pos) const {
         if (pos >= size()) {
-            throw std::out_of_range{"extract_at_pos() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+            throw std::out_of_range{"get_word_at_pos() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
         }
         size_t offset = pos % WordBits;
         WordType out = data[pos / WordBits] >> offset;
@@ -269,14 +309,14 @@ public:
     self_type operator<<(size_t shift) const {
         self_type x{};
         for (size_t pos = shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
-            x.insert_at_pos(data[i], pos);
+            x.set_word_at_pos(data[i], pos);
         }
         return x;
     }
     self_type operator<<=(size_t shift) {
         self_type x{};
         for (size_t pos = shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
-            x.insert_at_pos(data[i], pos);
+            x.set_word_at_pos(data[i], pos);
         }
         *this = x;
         return *this;
@@ -289,7 +329,7 @@ public:
     self_type operator>>=(size_t shift) {
         size_t i = 0;
         for (size_t pos = shift; pos < size() && i < data.size(); pos += WordBits, i++) {
-            data[i] = extract_at_pos(pos);
+            data[i] = get_word_at_pos(pos);
         }
         for (; i < data.size(); i++) {
             data[i] = 0;
@@ -318,7 +358,7 @@ public:
         static_assert(M <= size(), "gather operation mask length must be <= input length");
         bitarray<O, WordType> output {};
         for (size_t i = 0, pos = 0; i < mask.data.size(); i++) {
-            output.insert_at_pos(pext(
+            output.set_word_at_pos(pext(
                 data[i],
                 mask.data[i]
             ), pos);
@@ -332,7 +372,7 @@ public:
         bitarray<M, WordType> output {};
         for (size_t i = 0, pos = 0; i < output.data.size(); i++) {
             output.data[i] = pdep(
-                extract_at_pos(pos),
+                get_word_at_pos(pos),
                 mask.data[i]
             );
             pos += std::popcount(mask.data[i]);
