@@ -1,5 +1,7 @@
 #include <cstring>
 #include <array>
+#include <vector>
+#include <span>
 #include <cstdint>
 #include <limits>
 #include <iostream>
@@ -43,40 +45,66 @@ T pdep(T data, T mask) {
 }
 
 namespace bitarray {
+inline constexpr size_t match_underlying = -1;
 template <
-    size_t Bits,
+    size_t Bits = match_underlying,
     typename WordType = size_t,
     typename Container = std::array<WordType, 1 + (Bits - 1) / std::numeric_limits<WordType>::digits>
 >
+requires (std::numeric_limits<WordType>::is_integer && !std::numeric_limits<WordType>::is_signed)
 struct bitarray {
-    //TODO
-    //container adaptor like std::stack
     using self_type = bitarray<Bits, WordType, Container>;
-    static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an unsigned integer");
-    static_assert(!std::numeric_limits<WordType>::is_signed, "storage type must be an unsigned integer");
-
     static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
 
     Container data {};
+    size_t _size = 0;
+
+    constexpr size_t infer_size() {
+        if constexpr (Bits == match_underlying) {
+            return data.size() * WordBits;
+        } else {
+            return Bits;
+        }
+    }
+    constexpr size_t size() const {
+        if constexpr (Bits == match_underlying) {
+            return data.size() * WordBits;
+        } else {
+            return _size;
+        }
+    }
+    void resize(size_t s) {
+        if constexpr (Bits == match_underlying) {
+            throw std::runtime_error{"trying to resize a bitarray with match_underlying = true"};
+        } else {
+            data.resize(s / WordBits);
+            _size = s;
+        }
+    }
 
     bitarray(const self_type& other):
         //TODO add ctor for mismatching word types
-        data{other.data}
+        data{other.data},
+        _size{infer_size()}
     {}
     self_type& operator=(const self_type& other) {
         data = other.data;
+        _size = infer_size();
         return *this;
     }
     bitarray(Container c):
-        data {c}
+        data{c},
+        _size{infer_size()}
     {}
     template<typename ...Ts>
     requires (std::integral<Ts> && ...)
     bitarray(Ts... ts):
-        data {static_cast<WordType>(ts)...}
+        data{static_cast<WordType>(ts)...},
+        _size{infer_size()}
     {}
     bitarray():
-        data{}
+        data{},
+        _size{infer_size()}
     {}
 
     template <class CharT, class Traits>
@@ -122,9 +150,6 @@ private:
 #pragma GCC diagnostic pop
     }
 public:
-    static constexpr size_t size() {
-        return Bits;
-    }
     bool all() const {
         if (size() % WordBits == 0) {
             for (size_t i = 0; i < data.size(); i++)
@@ -367,7 +392,9 @@ public:
 
     template<size_t M, size_t O = M>
     bitarray<O, WordType> gather(bitarray<M, WordType> mask) {
-        static_assert(M <= size(), "gather operation mask length must be <= input length");
+        if (M > size()) {
+            throw std::out_of_range{"gather operation mask length must be <= input length"};
+        }
         bitarray<O, WordType> output {};
         for (size_t i = 0, pos = 0; i < mask.data.size(); i++) {
             output.set_word_at_pos(pext(
@@ -380,7 +407,9 @@ public:
     }
     template<size_t M>
     bitarray<M, WordType> scatter(bitarray<M, WordType> mask) {
-        static_assert(M >= size(), "scatter operation mask length must be >= input length");
+        if (M < size()) {
+            throw std::out_of_range{"scatter operation mask length must be >= input length"};
+        }
         bitarray<M, WordType> output {};
         for (size_t i = 0, pos = 0; i < output.data.size(); i++) {
             output.data[i] = pdep(
@@ -423,4 +452,13 @@ public:
         return output;
     }
 };
+
+template<typename T, size_t S>
+bitarray(std::array<T, S>) -> bitarray<std::numeric_limits<T>::digits * S, T, std::array<T, S>>;
+template<typename T>
+bitarray(std::vector<T>) -> bitarray<match_underlying, T, std::vector<T>>;
+template<typename T>
+bitarray(std::span<T, std::dynamic_extent>) -> bitarray<match_underlying, T, std::span<T, std::dynamic_extent>>;
+template<typename T, size_t S>
+bitarray(std::span<T, S>) -> bitarray<std::numeric_limits<T>::digits * S, T, std::span<T, S>>;
 }

@@ -1,12 +1,76 @@
 #include "bitarray.hh"
 #include <iostream>
 #include <gtest/gtest.h>
+#include <vector>
+#include <span>
 
 #ifdef TYPE
 using type = TYPE;
 #else
 using type = uint64_t;
 #endif
+
+TEST(bitarray, ctors){
+    using T = bitarray::bitarray<257, type>;
+    T{};
+    T{0};
+    T{0, 0};
+    T{0, 0, 0};
+}
+
+TEST(bitarray, vector){
+    using T = bitarray::bitarray<257, type, std::vector<type>>;
+    T{};
+    T{0};
+    T{0, 0};
+    T{0, 0, 0};
+
+    bitarray::bitarray<bitarray::match_underlying, type, std::vector<type>> b;
+    b = {};
+    ASSERT_EQ(b.size(), sizeof(type) * 8 * 0);
+    b = {0};
+    ASSERT_EQ(b.size(), sizeof(type) * 8 * 1);
+    b = {0, 0};
+    ASSERT_EQ(b.size(), sizeof(type) * 8 * 2);
+    b = {0, 0, 0};
+    ASSERT_EQ(b.size(), sizeof(type) * 8 * 3);
+
+    bitarray::bitarray<0, type, std::vector<type>> x;
+    x.resize(127);
+    ASSERT_EQ(b.size(), 127);
+    x.resize(127 * 1024);
+    ASSERT_EQ(b.size(), 127 * 1024);
+}
+
+TEST(bitarray, span){
+    using T = bitarray::bitarray<257, type, std::span<type>>;
+    std::vector<type> v {128};
+    std::span{v};
+    T{std::span{v}};
+}
+
+TEST(bitarray, deduction){
+    {
+        bitarray::bitarray b{std::array<type, 2>{}};
+        ASSERT_EQ(b.size(), sizeof(type) * 8 * 2);
+    }
+    {
+        bitarray::bitarray b{std::vector<type>{3}};
+        ASSERT_EQ(b.size(), sizeof(type) * 8);
+    }
+    {
+        std::vector<type> v(30);
+        std::span<type> s{v.data(), v.size()};
+        bitarray::bitarray b{s};
+        ASSERT_EQ(b.size(), sizeof(type) * 8 * 30);
+    }
+    {
+        std::vector<type> v(30);
+        std::span<type> s{v.data(), 2};
+        bitarray::bitarray b{s};
+        ASSERT_EQ(b.size(), sizeof(type) * 8 * 2);
+    }
+}
 
 TEST(bitarray, basic_functions){
     using T = bitarray::bitarray<257, type>;

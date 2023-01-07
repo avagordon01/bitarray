@@ -2,3 +2,8 @@ data() to get access to underlying array
 increment, decrement
 https://github.com/ClaasBontus/bitset2
 support for dynamic length std::vector
+
+ownership and variable/fixed sizing is too complex as a container adaptor
+    i.e. template<typename Container> struct { Container data; ... };
+instead what about a view/range constructor like bit_view
+    borrowed range?
