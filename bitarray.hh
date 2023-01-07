@@ -149,14 +149,12 @@ public:
     int countl_zero() const {
         for (size_t i = data.size(); i--;)
             if (data[i] != 0)
-                return size() - (i * WordBits + WordBits - std::countl_zero(data[i]));
+                return size() - i * WordBits - (WordBits - std::countl_zero(data[i]));
         return size();
     }
-    int countl_one() const {
-        for (size_t i = data.size(); i--;)
-            if (data[i] != ones())
-                return size() - (i * WordBits + WordBits - std::countl_one(data[i]));
-        return size();
+    int countl_one() {
+        //XXX this doesn't seem like the best way
+        return (~*this).countl_zero();
     }
     void set() {
         for (auto& x: data)

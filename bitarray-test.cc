@@ -18,13 +18,31 @@ TEST(bitarray, basic_functions){
 }
 
 TEST(bitarray, fuzz_count){
-    constexpr size_t len = 128 + 7;
-    for(size_t i = 0; i < len; i++) {
-        bitarray::bitarray<len> x {};
-        size_t pos = i;
-        x.set(pos);
-        ASSERT_EQ(x.countl_zero(), len - 1 - pos);
-        ASSERT_EQ(x.countr_zero(), pos);
+    {
+        constexpr size_t len = 128 + 7;
+        for(size_t i = 0; i < len; i++) {
+            bitarray::bitarray<len> x {};
+            size_t pos = i;
+            x.set(pos);
+            ASSERT_EQ(x.countl_zero(), len - 1 - pos);
+            ASSERT_EQ(x.countr_zero(), pos);
+            x = ~x;
+            ASSERT_EQ(x.countl_one(), len - 1 - pos);
+            ASSERT_EQ(x.countr_one(), pos);
+        }
+    }
+    {
+        constexpr size_t len = 128;
+        for(size_t i = 0; i < len; i++) {
+            bitarray::bitarray<len> x {};
+            size_t pos = i;
+            x.set(pos);
+            ASSERT_EQ(x.countl_zero(), len - 1 - pos);
+            ASSERT_EQ(x.countr_zero(), pos);
+            x = ~x;
+            ASSERT_EQ(x.countl_one(), len - 1 - pos);
+            ASSERT_EQ(x.countr_one(), pos);
+        }
     }
 }
 
