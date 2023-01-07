@@ -18,17 +18,11 @@ TEST(bitarray, basic_functions){
     ASSERT_EQ((T{3LLU, 2LLU, 1LLU}).count(), 4);
 }
 
-size_t seed = 0xfeed;
-size_t num_trials = 1'000;
-std::mt19937 engine(seed);
-std::uniform_int_distribution<uint64_t> input_distribution;
-
 TEST(bitarray, fuzz_count){
     constexpr size_t len = 128 + 7;
-    std::uniform_int_distribution<size_t> set_distribution(0, len - 1);
-    for(size_t i = 0; i < num_trials; i++) {
+    for(size_t i = 0; i < len; i++) {
         bitarray::bitarray<len> x {};
-        size_t pos = set_distribution(engine);
+        size_t pos = i;
         x.set(pos);
         ASSERT_EQ(x.countl_zero(), len - 1 - pos);
         ASSERT_EQ(x.countr_zero(), pos);
@@ -36,10 +30,13 @@ TEST(bitarray, fuzz_count){
 }
 
 TEST(bitarray, fuzz_shift){
-    std::uniform_int_distribution<size_t> shift_distribution(0, 128);
-    for(size_t i = 0; i < num_trials; i++) {
-        auto input = bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)};
-        auto shift = shift_distribution(engine);
+    constexpr size_t len = 128;
+    for(size_t i = 0; i < len; i++) {
+        auto input = bitarray::bitarray<len>{};
+        for (size_t j = 1; j < len; j *= 2) {
+            input.set(j);
+        }
+        auto shift = i;
         auto output = input >> shift;
         decltype(output) expected {};
         for (size_t x = shift, y = 0; x < input.size() && y < output.size(); x++, y++) {
@@ -56,10 +53,13 @@ TEST(bitarray, fuzz_shift){
 }
 
 TEST(bitarray, fuzz_rotate){
-    std::uniform_int_distribution<size_t> shift_distribution(-128, 128);
-    for(size_t i = 0; i < num_trials; i++) {
-        auto input = bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)};
-        auto shift = shift_distribution(engine);
+    constexpr int len = 128;
+    for(int i = -len; i < len; i++) {
+        auto input = bitarray::bitarray<len>{};
+        for (size_t j = 1; j < len; j *= 2) {
+            input.set(j);
+        }
+        auto shift = i;
         auto output = input.rotl(shift);
         decltype(output) expected {};
         for (size_t x = 0; x < input.size(); x++) {
@@ -70,25 +70,28 @@ TEST(bitarray, fuzz_rotate){
 }
 
 TEST(bitarray, fuzz_ctors){
-    for(size_t i = 0; i < num_trials; i++) {
-        constexpr size_t l = 120;
-        bitarray::bitarray<l> a {~0LLU, ~0LLU};
-        bitarray::bitarray<l> b {};
-        b.set();
-        bitarray::bitarray<l> c {};
-        for (size_t i = 0; i < c.size(); i++) {
-            c.set(i, 1);
-        }
-        ASSERT_EQ(a, b);
-        ASSERT_EQ(b, c);
+    constexpr size_t l = 120;
+    bitarray::bitarray<l> a {~0LLU, ~0LLU};
+    bitarray::bitarray<l> b {};
+    b.set();
+    bitarray::bitarray<l> c {};
+    for (size_t i = 0; i < c.size(); i++) {
+        c.set(i, 1);
     }
+    ASSERT_EQ(a, b);
+    ASSERT_EQ(b, c);
 }
 
 TEST(bitarray, fuzz_gather){
-    for(size_t i = 0; i < num_trials; i++) {
-        auto input = bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)};
-        auto mask = bitarray::bitarray<120>{input_distribution(engine), input_distribution(engine)};
-        auto output = input.template gather<120>(mask);
+    constexpr size_t len = 128;
+    for(size_t i = 0; i < len; i++) {
+        auto input = bitarray::bitarray<len>{};
+        input.set(i);
+        auto mask = bitarray::bitarray<len>{};
+        for (size_t j = 1; j < len; j *= 2) {
+            mask.set(j);
+        }
+        auto output = input.template gather<len>(mask);
         decltype(output) expected {};
         for (size_t x = 0, y = 0; x < mask.size() && x < input.size() && y < output.size(); x++) {
             if (mask[x]) {
@@ -101,10 +104,15 @@ TEST(bitarray, fuzz_gather){
 }
 
 TEST(bitarray, fuzz_scatter){
-    for(size_t i = 0; i < num_trials; i++) {
-        auto input = bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)};
-        auto mask = bitarray::bitarray<140>{input_distribution(engine), input_distribution(engine)};
-        auto output = input.template scatter<140>(mask);
+    constexpr size_t len = 128;
+    for(size_t i = 0; i < len; i++) {
+        auto input = bitarray::bitarray<len>{};
+        input.set(i);
+        auto mask = bitarray::bitarray<len>{};
+        for (size_t j = 1; j < len; j *= 2) {
+            mask.set(j);
+        }
+        auto output = input.template scatter<len>(mask);
         decltype(output) expected {};
         for (size_t x = 0, y = 0; x < mask.size() && x < output.size() && y < input.size(); x++) {
             if (mask[x]) {
@@ -117,19 +125,21 @@ TEST(bitarray, fuzz_scatter){
 }
 
 TEST(bitarray, fuzz_interleave_deinterleave){
-    for(size_t i = 0; i < num_trials; i++) {
-        auto inputs = std::array<bitarray::bitarray<128>, 3>{
-            bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)},
-            bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)},
-            bitarray::bitarray<128>{input_distribution(engine), input_distribution(engine)},
-        };
-        auto output = bitarray::bitarray<128>::interleave(inputs);
-        decltype(output) expected {};
-        for (size_t x = 0; x < output.size(); x++) {
-            expected.set(x, inputs[x % 3][x / 3]);
-        }
-        ASSERT_EQ(output, expected);
-        auto outputs = bitarray::bitarray<128>::deinterleave<128, 3>(output);
-        ASSERT_EQ(outputs, inputs);
+    constexpr size_t len = 128;
+    auto inputs = std::array<bitarray::bitarray<len>, 3>{
+        bitarray::bitarray<len>{~0ULL, ~0ULL},
+        bitarray::bitarray<len>{0ULL, 0ULL},
+        bitarray::bitarray<len>{},
+    };
+    for (size_t j = 1; j < len; j *= 2) {
+        inputs[2].set(j);
     }
+    auto output = bitarray::bitarray<len>::interleave(inputs);
+    decltype(output) expected {};
+    for (size_t x = 0; x < output.size(); x++) {
+        expected.set(x, inputs[x % 3][x / 3]);
+    }
+    ASSERT_EQ(output, expected);
+    auto outputs = bitarray::bitarray<len>::deinterleave<len, 3>(output);
+    ASSERT_EQ(outputs, inputs);
 }
