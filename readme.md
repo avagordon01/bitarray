@@ -34,7 +34,7 @@ For testing and installing:
 
 ## Usage
 
-Include `bitarray.hh` and use `bitarray<N>` instead of `std::bitset<N>`
+Include `bitarray.hh` and use `bitarray::bitarray<N>` instead of `std::bitset<N>`
 
 ## Building and Testing
 

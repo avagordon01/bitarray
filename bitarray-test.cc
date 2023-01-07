@@ -1,6 +1,5 @@
 #include "bitarray.hh"
 #include <iostream>
-#include <random>
 #include <gtest/gtest.h>
 
 #ifdef TYPE

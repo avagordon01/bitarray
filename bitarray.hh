@@ -2,11 +2,10 @@
 #include <array>
 #include <cstdint>
 #include <limits>
-#include <memory>
 #include <iostream>
 #include <immintrin.h>
-#include <cassert>
 #include <bit>
+#include <stdexcept>
 
 namespace {
 template<typename T>
@@ -45,6 +44,7 @@ T pdep(T data, T mask) {
 namespace bitarray {
 template <size_t Bits, typename WordType = size_t>
 struct bitarray {
+    using self_type = bitarray<Bits, WordType>;
     static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an unsigned integer");
     static_assert(!std::numeric_limits<WordType>::is_signed, "storage type must be an unsigned integer");
 
@@ -65,7 +65,7 @@ struct bitarray {
     }
 
     template <class CharT, class Traits>
-    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const bitarray<Bits, WordType>& x) {
+    friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
         for (ssize_t i = x.size(); i--;) {
             bool bit = x[i];
             os << (bit ? '1' : '0');
@@ -164,7 +164,9 @@ public:
         sanitize();
     }
     constexpr void set(size_t pos, bool value = true) {
-        assert(pos < size());
+        if (pos >= size()) {
+            throw std::out_of_range{"set() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+        }
         if (value) {
             data[pos / WordBits] |= one() << (pos % WordBits);
         } else {
@@ -176,7 +178,9 @@ public:
             x = zero();
     }
     void reset(size_t pos) {
-        assert(pos < size());
+        if (pos >= size()) {
+            throw std::out_of_range{"reset() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+        }
         data[pos / WordBits] &= ~(one() << (pos % WordBits));
     }
     void flip() {
@@ -185,11 +189,15 @@ public:
         sanitize();
     }
     void flip(size_t pos) {
-        assert(pos < size());
+        if (pos >= size()) {
+            throw std::out_of_range{"flip() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+        }
         data[pos / WordBits] ^= one() << (pos % WordBits);
     }
     void insert_at_pos(WordType x, size_t pos) {
-        assert(pos < size());
+        if (pos >= size()) {
+            throw std::out_of_range{"insert_at_pos() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+        }
         size_t offset = pos % WordBits;
         data[pos / WordBits] |= x << offset;
         if (offset != 0 && pos / WordBits + 1 < data.size()) {
@@ -197,7 +205,9 @@ public:
         }
     }
     WordType extract_at_pos(size_t pos) const {
-        assert(pos < size());
+        if (pos >= size()) {
+            throw std::out_of_range{"extract_at_pos() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+        }
         size_t offset = pos % WordBits;
         WordType out = data[pos / WordBits] >> offset;
         if (offset != 0 && pos / WordBits + 1 < data.size()) {
@@ -205,78 +215,82 @@ public:
         }
         return out;
     }
-    bool operator==(const bitarray<Bits, WordType>& rhs) const {
+    bool operator==(const self_type& rhs) const {
         for (size_t i = 0; i < data.size(); i++)
             if (data[i] != rhs.data[i])
                 return false;
         return true;
     }
-    bool operator!=(const bitarray<Bits, WordType>& rhs) const {
+    bool operator!=(const self_type& rhs) const {
         return !(*this == rhs);
     }
     constexpr bool at(size_t pos) const {
-        assert(pos < size());
+        if (pos >= size()) {
+            throw std::out_of_range{"at() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
+        }
         return *this[pos];
     }
     constexpr bool operator[](size_t pos) const {
         return static_cast<bool>((data[pos / WordBits] >> (pos % WordBits)) & 1);
     }
-    void operator~() const {
-        for (auto& x: data)
+    self_type operator~() const {
+        auto v = *this;
+        for (auto& x: v.data)
             x = ~x;
-        sanitize();
+        v.sanitize();
+        return v;
     }
-    void operator&=(const bitarray<Bits, WordType>& rhs) {
+    void operator&=(const self_type& rhs) {
         for (size_t i = 0; i < data.size(); i++)
             data[i] &= rhs.data[i];
     }
-    void operator|=(const bitarray<Bits, WordType>& rhs) {
+    void operator|=(const self_type& rhs) {
         for (size_t i = 0; i < data.size(); i++)
             data[i] |= rhs.data[i];
     }
-    void operator^=(const bitarray<Bits, WordType>& rhs) {
+    void operator^=(const self_type& rhs) {
         for (size_t i = 0; i < data.size(); i++)
             data[i] ^= rhs.data[i];
         sanitize();
     }
-    bitarray<Bits, WordType> operator&(const bitarray<Bits, WordType>& rhs) const {
-        bitarray<Bits, WordType> x = *this;
+    self_type operator&(const self_type& rhs) const {
+        self_type x = *this;
         x &= rhs;
         return x;
     }
-    bitarray<Bits, WordType> operator|(const bitarray<Bits, WordType>& rhs) const {
-        bitarray<Bits, WordType> x = *this;
+    self_type operator|(const self_type& rhs) const {
+        self_type x = *this;
         x |= rhs;
         return x;
     }
-    bitarray<Bits, WordType> operator^(const bitarray<Bits, WordType>& rhs) const {
-        bitarray<Bits, WordType> x = *this;
+    self_type operator^(const self_type& rhs) const {
+        self_type x = *this;
         x ^= rhs;
         return x;
     }
-    bitarray<Bits, WordType> operator<<(size_t _shift) const {
-        bitarray<Bits, WordType> x{};
-        for (size_t pos = _shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
+    self_type operator<<(size_t shift) const {
+        self_type x{};
+        for (size_t pos = shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
             x.insert_at_pos(data[i], pos);
         }
         return x;
     }
-    bitarray<Bits, WordType> operator<<=(size_t _shift) {
-        bitarray<Bits, WordType> x{};
-        for (size_t pos = _shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
+    self_type operator<<=(size_t shift) {
+        self_type x{};
+        for (size_t pos = shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
             x.insert_at_pos(data[i], pos);
         }
         *this = x;
         return *this;
     }
-    bitarray<Bits, WordType> operator>>(size_t _shift) const {
-        bitarray<Bits, WordType> x = *this;
-        x >>= _shift;
+    self_type operator>>(size_t shift) const {
+        self_type x = *this;
+        x >>= shift;
         return x;
     }
-    bitarray<Bits, WordType> operator>>=(size_t _shift) {
+    self_type operator>>=(size_t shift) {
         size_t i = 0;
-        for (size_t pos = _shift; pos < size() && i < data.size(); pos += WordBits, i++) {
+        for (size_t pos = shift; pos < size() && i < data.size(); pos += WordBits, i++) {
             data[i] = extract_at_pos(pos);
         }
         for (; i < data.size(); i++) {
@@ -284,19 +298,19 @@ public:
         }
         return *this;
     }
-    bitarray<Bits, WordType> rotl(int _shift) {
-        if (_shift < 0) {
-            return rotr(-_shift);
+    self_type rotl(int shift) {
+        if (shift < 0) {
+            return rotr(-shift);
         }
-        _shift %= size();
-        return (*this << _shift) | (*this >> (size() - _shift));
+        shift %= size();
+        return (*this << shift) | (*this >> (size() - shift));
     }
-    bitarray<Bits, WordType> rotr(int _shift) {
-        if (_shift < 0) {
-            return rotl(-_shift);
+    self_type rotr(int shift) {
+        if (shift < 0) {
+            return rotl(-shift);
         }
-        _shift %= size();
-        return (*this >> _shift) | (*this << (size() - _shift));
+        shift %= size();
+        return (*this >> shift) | (*this << (size() - shift));
     }
 
 
