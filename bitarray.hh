@@ -43,27 +43,41 @@ T pdep(T data, T mask) {
 }
 
 namespace bitarray {
-template <size_t Bits, typename WordType = size_t>
+template <
+    size_t Bits,
+    typename WordType = size_t,
+    typename Container = std::array<WordType, 1 + (Bits - 1) / std::numeric_limits<WordType>::digits>
+>
 struct bitarray {
-    using self_type = bitarray<Bits, WordType>;
+    //TODO
+    //container adaptor like std::stack
+    using self_type = bitarray<Bits, WordType, Container>;
     static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an unsigned integer");
     static_assert(!std::numeric_limits<WordType>::is_signed, "storage type must be an unsigned integer");
 
     static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
-    static constexpr size_t Words = 1 + (Bits - 1) / WordBits;
-    static_assert(Words * WordBits >= Bits);
-    std::array<WordType, Words> data {};
-    bitarray() : data {} {}
-    template<typename T>
-    bitarray(std::initializer_list<T> list) : data {} {
-        std::memcpy(data.data(), list.begin(), std::min(sizeof(T) * list.size(), sizeof(WordType) * data.size()));
-        sanitize();
+
+    Container data {};
+
+    bitarray(const self_type& other):
+        //TODO add ctor for mismatching word types
+        data{other.data}
+    {}
+    self_type& operator=(const self_type& other) {
+        data = other.data;
+        return *this;
     }
-    template<typename T>
-    bitarray(T other) : data {} {
-        std::copy(other.data.begin(), other.data.begin() + std::min(other.data.size(), data.size()), data.begin());
-        sanitize();
-    }
+    bitarray(Container c):
+        data {c}
+    {}
+    template<typename ...Ts>
+    requires (std::integral<Ts> && ...)
+    bitarray(Ts... ts):
+        data {static_cast<WordType>(ts)...}
+    {}
+    bitarray():
+        data{}
+    {}
 
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
@@ -223,7 +237,7 @@ public:
     }
     void flip() {
         for (auto& x: data)
-            x ^= ones();
+            x = ~x;
         sanitize();
     }
     void flip(size_t pos) {
@@ -272,10 +286,8 @@ public:
         return static_cast<bool>((data[pos / WordBits] >> (pos % WordBits)) & 1);
     }
     self_type operator~() const {
-        auto v = *this;
-        for (auto& x: v.data)
-            x = ~x;
-        v.sanitize();
+        self_type v = *this;
+        v.flip();
         return v;
     }
     void operator&=(const self_type& rhs) {

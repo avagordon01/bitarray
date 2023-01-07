@@ -9,12 +9,12 @@ using type = uint64_t;
 #endif
 
 TEST(bitarray, basic_functions){
-    using T = bitarray::bitarray<129, type>;
-    ASSERT_TRUE((T{~0LLU, ~0LLU, ~0LLU}).all());
-    ASSERT_TRUE((T{0LLU, 0LLU, 0LLU}).none());
-    ASSERT_FALSE((T{0LLU, 0LLU, 0LLU}).any());
-    ASSERT_TRUE((T{1LLU, 0LLU, 0LLU}).any());
-    ASSERT_EQ((T{3LLU, 2LLU, 1LLU}).count(), 4);
+    using T = bitarray::bitarray<257, type>;
+    ASSERT_TRUE((~T{}).all());
+    ASSERT_TRUE((T{0, 0, 0}).none());
+    ASSERT_FALSE((T{0, 0, 0}).any());
+    ASSERT_TRUE((T{1, 0, 0}).any());
+    ASSERT_EQ((T{3, 2, 1}).count(), 4);
 }
 
 TEST(bitarray, fuzz_count){
@@ -88,15 +88,13 @@ TEST(bitarray, fuzz_rotate){
 
 TEST(bitarray, fuzz_ctors){
     constexpr size_t l = 120;
-    bitarray::bitarray<l> a {~0LLU, ~0LLU};
+    bitarray::bitarray<l> a {};
+    a.set();
     bitarray::bitarray<l> b {};
-    b.set();
-    bitarray::bitarray<l> c {};
-    for (size_t i = 0; i < c.size(); i++) {
-        c.set(i, 1);
+    for (size_t i = 0; i < b.size(); i++) {
+        b.set(i, 1);
     }
     ASSERT_EQ(a, b);
-    ASSERT_EQ(b, c);
 }
 
 TEST(bitarray, fuzz_gather){
@@ -144,8 +142,8 @@ TEST(bitarray, fuzz_scatter){
 TEST(bitarray, fuzz_interleave_deinterleave){
     constexpr size_t len = 128;
     auto inputs = std::array<bitarray::bitarray<len>, 3>{
-        bitarray::bitarray<len>{~0ULL, ~0ULL},
-        bitarray::bitarray<len>{0ULL, 0ULL},
+        ~bitarray::bitarray<len>{},
+        bitarray::bitarray<len>{},
         bitarray::bitarray<len>{},
     };
     for (size_t j = 1; j < len; j *= 2) {
