@@ -1,4 +1,16 @@
-data() to get access to underlying array
-increment, decrement
+bits::bitarray<size, T = size_t> = std::array<T, size>
+    everything implemented
+bits::bitvector<T = size_t> = std::vector<T>
+    performance warning copy operators
+bits::bitspan<size = std::dynamic_extent, T = size_t> = std::span<T, size>
+    disable copy operators
+
+can they all be implemented on the same underlying type?
+
+they should interoperate
+bitarray op bitvector should work
+easiest if there's a single underlying type
+
+
+
 https://github.com/ClaasBontus/bitset2
-support for dynamic length std::vector

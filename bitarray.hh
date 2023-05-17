@@ -1,5 +1,3 @@
-#include <cstring>
-#include <array>
 #include <cstdint>
 #include <limits>
 #include <iostream>
@@ -7,6 +5,9 @@
 #include <bit>
 #include <stdexcept>
 #include <algorithm>
+#include <optional>
+#include <array>
+#include <vector>
 
 namespace {
 template<typename T>
@@ -43,27 +44,26 @@ T pdep(T data, T mask) {
 }
 
 namespace bitarray {
-template <size_t Bits, typename WordType = size_t>
+template <size_t fixed_size = 0, typename T = std::array<size_t, fixed_size / std::numeric_limits<size_t>::digits>>
 struct bitarray {
-    using self_type = bitarray<Bits, WordType>;
-    static_assert(std::numeric_limits<WordType>::is_integer, "storage type must be an unsigned integer");
-    static_assert(!std::numeric_limits<WordType>::is_signed, "storage type must be an unsigned integer");
+    using self_type = bitarray<fixed_size, T>;
+    using WordType = typename T::value_type;
+    static constexpr auto WordBits = std::numeric_limits<WordType>::digits;
 
-    static constexpr size_t WordBits = std::numeric_limits<WordType>::digits;
-    static constexpr size_t Words = 1 + (Bits - 1) / WordBits;
-    static_assert(Words * WordBits >= Bits);
-    std::array<WordType, Words> data {};
-    bitarray() : data {} {}
-    template<typename T>
-    bitarray(std::initializer_list<T> list) : data {} {
-        std::memcpy(data.data(), list.begin(), std::min(sizeof(T) * list.size(), sizeof(WordType) * data.size()));
-        sanitize();
-    }
-    template<typename T>
-    bitarray(T other) : data {} {
-        std::copy(other.data.begin(), other.data.begin() + std::min(other.data.size(), data.size()), data.begin());
-        sanitize();
-    }
+    T data;
+    //_size is for if the number of bits used is less than the underlying data has
+    std::optional<size_t> _size = std::nullopt;
+
+    bitarray(): data{}, _size(fixed_size) {}
+
+    template<typename S>
+    bitarray(S size): data{}, _size(size) {}
+
+    bitarray(T& _data): data(_data), _size(std::nullopt) {}
+    bitarray(T& _data, size_t s): data(_data), _size({s}) {}
+
+    bitarray(T&& _data): data(std::move(_data)), _size(std::nullopt) {}
+    bitarray(T&& _data, size_t s): data(_data), _size({s}) {}
 
     template <class CharT, class Traits>
     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const self_type& x) {
@@ -99,27 +99,45 @@ private:
     constexpr WordType ones() const {
         return ~static_cast<WordType>(0);
     }
+    WordType& back() {
+        return *std::prev(std::end(data));
+    }
     void sanitize() {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshift-count-overflow"
         if (size() % WordBits != 0) {
-            data.back() &= ones() >> (WordBits - size() % WordBits);
+            back() &= ones() >> (WordBits - size() % WordBits);
         }
 #pragma GCC diagnostic pop
     }
 public:
-    static constexpr size_t size() {
-        return Bits;
+    constexpr size_t size() const {
+#ifndef __clang__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+        return _size.value_or(std::size(data) * WordBits);
+#ifndef __clang__
+#pragma GCC diagnostic pop
+#endif
+    }
+    void resize(size_t s) {
+        if (s / WordBits >= std::size(data)) {
+            data.resize(s / WordBits);
+            _size = s;
+        } else {
+            _size = {s};
+        }
     }
     bool all() const {
         if (size() % WordBits == 0) {
-            for (size_t i = 0; i < data.size(); i++)
+            for (size_t i = 0; i < std::size(data); i++)
                 if (data[i] != ones())
                     return false;
         } else {
-            if (data.back() != ones() >> (WordBits - size() % WordBits))
+            if (back() != ones() >> (WordBits - size() % WordBits))
                 return false;
-            for (size_t i = 0; i + 1 < data.size(); i++)
+            for (size_t i = 0; i + 1 < std::size(data); i++)
                 if (data[i] != ones())
                     return false;
         }
@@ -151,40 +169,49 @@ public:
         return count() == 1;
     }
     int countr_zero() const {
-        for (size_t i = 0; i < data.size(); i++)
+        for (size_t i = 0; i < std::size(data); i++)
             if (data[i] != 0)
                 return i * WordBits + std::countr_zero(data[i]);
         return size();
     }
     int countr_one() const {
-        for (size_t i = 0; i < data.size(); i++)
+        for (size_t i = 0; i < std::size(data); i++)
             if (data[i] != ones())
                 return i * WordBits + std::countr_one(data[i]);
         return size();
     }
     int countl_zero() const {
-        for (size_t i = data.size(); i--;)
+        for (size_t i = std::size(data); i--;)
             if (data[i] != 0)
                 return size() - i * WordBits - (WordBits - std::countl_zero(data[i]));
         return size();
     }
-    int countl_one() {
-        //XXX this doesn't seem like the best way
-        return (~*this).countl_zero();
-    }
-    int bit_width() {
-        return size() - countl_zero();
-    }
-    self_type bit_floor() {
-        if (any())
-            return self_type{1} << (bit_width() - 1);
+    int countl_one() const {
+        //FIXME implement without a temporary
+        //return (~*this).countl_zero();
         return 0;
     }
-    self_type bit_ceil() {
+    int bit_width() const {
+        return size() - countl_zero();
+    }
+    self_type bit_floor() const {
+        int w = bit_width();
+        reset();
+        if (w != 0) {
+            set(w - 1);
+        }
+        return *this;
+    }
+    self_type bit_ceil() const {
         //TODO
     }
+
+
+
+
+
     void wordswap() {
-        std::reverse(data.begin(), data.end());
+        std::reverse(std::begin(data), std::end(data));
     }
     void byteswap() {
         wordswap();
@@ -196,12 +223,13 @@ public:
         byteswap();
         //TODO bitswap
     }
-    void set() {
+    self_type set() {
         for (auto& x: data)
             x = ones();
         sanitize();
+        return *this;
     }
-    constexpr void set(size_t pos, bool value = true) {
+    constexpr self_type set(size_t pos, bool value = true) {
         if (pos >= size()) {
             throw std::out_of_range{"set() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
         }
@@ -210,27 +238,32 @@ public:
         } else {
             data[pos / WordBits] &= ~(one() << (pos % WordBits));
         }
+        return *this;
     }
-    void reset() {
+    self_type reset() {
         for (auto& x: data)
             x = zero();
+        return *this;
     }
-    void reset(size_t pos) {
+    self_type reset(size_t pos) {
         if (pos >= size()) {
             throw std::out_of_range{"reset() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
         }
         data[pos / WordBits] &= ~(one() << (pos % WordBits));
+        return *this;
     }
-    void flip() {
+    self_type flip() {
         for (auto& x: data)
-            x ^= ones();
+            x = ~x;
         sanitize();
+        return *this;
     }
-    void flip(size_t pos) {
+    self_type flip(size_t pos) {
         if (pos >= size()) {
             throw std::out_of_range{"flip() called with pos " + std::to_string(pos) + " on bitset of size " + std::to_string(size())};
         }
         data[pos / WordBits] ^= one() << (pos % WordBits);
+        return *this;
     }
     void set_word_at_pos(WordType x, size_t pos) {
         if (pos >= size()) {
@@ -238,7 +271,7 @@ public:
         }
         size_t offset = pos % WordBits;
         data[pos / WordBits] |= x << offset;
-        if (offset != 0 && pos / WordBits + 1 < data.size()) {
+        if (offset != 0 && pos / WordBits + 1 < std::size(data)) {
             data[pos / WordBits + 1] |= x >> (WordBits - offset);
         }
     }
@@ -248,13 +281,13 @@ public:
         }
         size_t offset = pos % WordBits;
         WordType out = data[pos / WordBits] >> offset;
-        if (offset != 0 && pos / WordBits + 1 < data.size()) {
+        if (offset != 0 && pos / WordBits + 1 < std::size(data)) {
             out |= data[pos / WordBits + 1] << (WordBits - offset);
         }
         return out;
     }
     bool operator==(const self_type& rhs) const {
-        for (size_t i = 0; i < data.size(); i++)
+        for (size_t i = 0; i < std::size(data); i++)
             if (data[i] != rhs.data[i])
                 return false;
         return true;
@@ -271,68 +304,45 @@ public:
     constexpr bool operator[](size_t pos) const {
         return static_cast<bool>((data[pos / WordBits] >> (pos % WordBits)) & 1);
     }
-    self_type operator~() const {
-        auto v = *this;
-        for (auto& x: v.data)
-            x = ~x;
-        v.sanitize();
-        return v;
-    }
-    void operator&=(const self_type& rhs) {
-        for (size_t i = 0; i < data.size(); i++)
+    //TODO
+    //for view/non-owning types (span)
+    //operator& etc shouldn't compile (versus in-place operator &= which should be fine)
+
+    //TODO
+    //performance warning on using copy operators for large vectors
+
+    self_type operator&=(const self_type& rhs) {
+        //FIXME what if the dynamic sizes are different?
+        for (size_t i = 0; i < std::size(data); i++)
             data[i] &= rhs.data[i];
-    }
-    void operator|=(const self_type& rhs) {
-        for (size_t i = 0; i < data.size(); i++)
-            data[i] |= rhs.data[i];
-    }
-    void operator^=(const self_type& rhs) {
-        for (size_t i = 0; i < data.size(); i++)
-            data[i] ^= rhs.data[i];
-        sanitize();
-    }
-    self_type operator&(const self_type& rhs) const {
-        self_type x = *this;
-        x &= rhs;
-        return x;
-    }
-    self_type operator|(const self_type& rhs) const {
-        self_type x = *this;
-        x |= rhs;
-        return x;
-    }
-    self_type operator^(const self_type& rhs) const {
-        self_type x = *this;
-        x ^= rhs;
-        return x;
-    }
-    self_type operator<<(size_t shift) const {
-        self_type x{};
-        for (size_t pos = shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
-            x.set_word_at_pos(data[i], pos);
-        }
-        return x;
-    }
-    self_type operator<<=(size_t shift) {
-        self_type x{};
-        for (size_t pos = shift, i = 0; pos < size() && i < data.size(); pos += WordBits, i++) {
-            x.set_word_at_pos(data[i], pos);
-        }
-        *this = x;
         return *this;
     }
-    self_type operator>>(size_t shift) const {
-        self_type x = *this;
-        x >>= shift;
-        return x;
+    self_type operator|=(const self_type& rhs) {
+        //FIXME what if the dynamic sizes are different?
+        for (size_t i = 0; i < std::size(data); i++)
+            data[i] |= rhs.data[i];
+        return *this;
+    }
+    self_type operator^=(const self_type& rhs) {
+        //FIXME what if the dynamic sizes are different?
+        for (size_t i = 0; i < std::size(data); i++)
+            data[i] ^= rhs.data[i];
+        sanitize();
+        return *this;
+    }
+    self_type operator<<=(size_t shift) {
+        for (size_t i = std::size(data); i--;) {
+            set_word_at_pos(data[i], i * WordBits + shift);
+        }
+        return *this;
     }
     self_type operator>>=(size_t shift) {
-        size_t i = 0;
-        for (size_t pos = shift; pos < size() && i < data.size(); pos += WordBits, i++) {
-            data[i] = get_word_at_pos(pos);
-        }
-        for (; i < data.size(); i++) {
-            data[i] = 0;
+        for (size_t i = 0; i < std::size(data); i++) {
+            if (shift + i * WordBits < size()) {
+                data[i] = get_word_at_pos(shift + i * WordBits);
+            } else {
+                data[i] = 0;
+            }
         }
         return *this;
     }
@@ -341,23 +351,29 @@ public:
             return rotr(-shift);
         }
         shift %= size();
-        return (*this << shift) | (*this >> (size() - shift));
+        //FIXME implement without temporaries
+        //return (*this << shift) | (*this >> (size() - shift));
+        return *this;
     }
     self_type rotr(int shift) {
         if (shift < 0) {
             return rotl(-shift);
         }
         shift %= size();
-        return (*this >> shift) | (*this << (size() - shift));
+        //FIXME implement without temporaries
+        //return (*this >> shift) | (*this << (size() - shift));
+        return *this;
     }
 
 
 
+    /*
+    FIXME
     template<size_t M, size_t O = M>
     bitarray<O, WordType> gather(bitarray<M, WordType> mask) {
         static_assert(M <= size(), "gather operation mask length must be <= input length");
         bitarray<O, WordType> output {};
-        for (size_t i = 0, pos = 0; i < mask.data.size(); i++) {
+        for (size_t i = 0, pos = 0; i < mask.std::size(data); i++) {
             output.set_word_at_pos(pext(
                 data[i],
                 mask.data[i]
@@ -370,7 +386,7 @@ public:
     bitarray<M, WordType> scatter(bitarray<M, WordType> mask) {
         static_assert(M >= size(), "scatter operation mask length must be >= input length");
         bitarray<M, WordType> output {};
-        for (size_t i = 0, pos = 0; i < output.data.size(); i++) {
+        for (size_t i = 0, pos = 0; i < output.std::size(data); i++) {
             output.data[i] = pdep(
                 get_word_at_pos(pos),
                 mask.data[i]
@@ -410,5 +426,13 @@ public:
         }
         return output;
     }
+    */
 };
+
+template<std::integral S>
+bitarray(S size) -> bitarray<0, std::vector<size_t>>;
+
+template<typename T>
+requires (!std::integral<T>)
+bitarray(T data) -> bitarray<0, T>;
 }

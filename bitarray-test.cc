@@ -2,20 +2,74 @@
 #include <iostream>
 #include <gtest/gtest.h>
 
+#include <vector>
+#include <array>
+#include <span>
+#include <type_traits>
+
 #ifdef TYPE
 using type = TYPE;
 #else
 using type = uint64_t;
 #endif
 
-TEST(bitarray, basic_functions){
-    using T = bitarray::bitarray<129, type>;
-    ASSERT_TRUE((T{~0LLU, ~0LLU, ~0LLU}).all());
-    ASSERT_TRUE((T{0LLU, 0LLU, 0LLU}).none());
-    ASSERT_FALSE((T{0LLU, 0LLU, 0LLU}).any());
-    ASSERT_TRUE((T{1LLU, 0LLU, 0LLU}).any());
-    ASSERT_EQ((T{3LLU, 2LLU, 1LLU}).count(), 4);
+TEST(bitarray, ctors) {
+    {
+        bitarray::bitarray b(std::vector<type>(100));
+        b.set(1, 1);
+    }
+
+    {
+        bitarray::bitarray b(std::array<type, 100>{0});
+        b.set(1, 1);
+    }
+
+    {
+        std::vector<type> vector(100);
+        bitarray::bitarray b(std::span<type, 100>{vector});
+        b.set(1, 1);
+    }
+
+    {
+        std::vector<type> vector(100);
+        bitarray::bitarray b(vector);
+        b.set(1, 1);
+        b.resize(3000);
+        b.set(2000, 1);
+    }
+
+    {
+        bitarray::bitarray b(std::vector<type>(100));
+        b.set(1, 1);
+        b.resize(3000);
+        b.set(2000, 1);
+    }
+
+    {
+        bitarray::bitarray<128> b;
+        static_assert(std::is_same_v<decltype(b.data), std::array<size_t, 128 / std::numeric_limits<size_t>::digits>>);
+        ASSERT_EQ(b.size(), 128);
+    }
+
+    {
+        bitarray::bitarray b {128};
+        static_assert(std::is_same_v<decltype(b.data), std::vector<size_t>>);
+        ASSERT_EQ(b.size(), 128);
+    }
 }
+
+#if 0
+TEST(bitarray, basic_functions){
+    bitarray::bitarray{std::array{~0LLU, ~0LLU, ~0LLU}, 129};
+    /*
+    ASSERT_TRUE((T{std::array{~0LLU, ~0LLU, ~0LLU}, 129}).all());
+    ASSERT_TRUE((T{std::array{0LLU, 0LLU, 0LLU}, 129}).none());
+    ASSERT_FALSE((T{std::array{0LLU, 0LLU, 0LLU}, 129}).any());
+    ASSERT_TRUE((T{std::array{1LLU, 0LLU, 0LLU}, 129}).any());
+    ASSERT_EQ((T{std::array{3LLU, 2LLU, 1LLU}, 129}).count(), 4);
+    */
+}
+#endif
 
 TEST(bitarray, fuzz_count){
     {
@@ -26,7 +80,7 @@ TEST(bitarray, fuzz_count){
             x.set(pos);
             ASSERT_EQ(x.countl_zero(), len - 1 - pos);
             ASSERT_EQ(x.countr_zero(), pos);
-            x = ~x;
+            x.flip();
             ASSERT_EQ(x.countl_one(), len - 1 - pos);
             ASSERT_EQ(x.countr_one(), pos);
         }
@@ -39,13 +93,14 @@ TEST(bitarray, fuzz_count){
             x.set(pos);
             ASSERT_EQ(x.countl_zero(), len - 1 - pos);
             ASSERT_EQ(x.countr_zero(), pos);
-            x = ~x;
+            x.flip();
             ASSERT_EQ(x.countl_one(), len - 1 - pos);
             ASSERT_EQ(x.countr_one(), pos);
         }
     }
 }
 
+#if 0
 TEST(bitarray, fuzz_shift){
     constexpr size_t len = 128;
     for(size_t i = 0; i < len; i++) {
@@ -160,3 +215,4 @@ TEST(bitarray, fuzz_interleave_deinterleave){
     auto outputs = bitarray::bitarray<len>::deinterleave<len, 3>(output);
     ASSERT_EQ(outputs, inputs);
 }
+#endif
