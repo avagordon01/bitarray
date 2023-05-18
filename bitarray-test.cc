@@ -13,33 +13,52 @@ using type = TYPE;
 using type = uint64_t;
 #endif
 
+TEST(bitarray, bit_word_calculations) {
+    ASSERT_EQ(words_needed<uint8_t>(0), 0);
+    ASSERT_EQ(words_needed<uint8_t>(1), 1);
+    ASSERT_EQ(words_needed<uint8_t>(8), 1);
+    ASSERT_EQ(words_needed<uint8_t>(9), 2);
+    ASSERT_EQ(words_needed<uint8_t>(16), 2);
+    ASSERT_EQ(words_needed<uint8_t>(17), 3);
+}
+
 TEST(bitarray, ctors) {
     {
-        bitarray::bitarray b(std::vector<type>(100));
+        bitarray::bitvector b(2);
+        ASSERT_EQ(b.size(), 2);
+        ASSERT_EQ(b.data.size(), 1);
         b.set(1, 1);
     }
 
     {
-        bitarray::bitarray b(std::array<type, 100>{0});
+        bitarray::bitarray<100> b;
         b.set(1, 1);
     }
 
     {
         std::vector<type> vector(100);
-        bitarray::bitarray b(std::span<type, 100>{vector});
+        bitarray::bitspan b(std::span<type, 100>{vector});
         b.set(1, 1);
+        ASSERT_EQ(b.size(), 100);
     }
 
     {
         std::vector<type> vector(100);
-        bitarray::bitarray b(vector);
+        bitarray::bitvector b(vector);
         b.set(1, 1);
         b.resize(3000);
         b.set(2000, 1);
     }
 
     {
-        bitarray::bitarray b(std::vector<type>(100));
+        bitarray::bitvector b(2, {100, 100});
+        b.set(1, 1);
+        b.resize(3000);
+        b.set(2000, 1);
+    }
+
+    {
+        bitarray::bitvector b(2, std::vector<type>(100));
         b.set(1, 1);
         b.resize(3000);
         b.set(2000, 1);
@@ -52,24 +71,27 @@ TEST(bitarray, ctors) {
     }
 
     {
-        bitarray::bitarray b {128};
+        bitarray::bitvector b {128};
         static_assert(std::is_same_v<decltype(b.data), std::vector<size_t>>);
         ASSERT_EQ(b.size(), 128);
     }
+
+    {
+        bitarray::bitvector b(100);
+        ASSERT_EQ(b.size(), 100);
+        b.resize(200);
+        ASSERT_EQ(b.size(), 200);
+    }
 }
 
-#if 0
 TEST(bitarray, basic_functions){
-    bitarray::bitarray{std::array{~0LLU, ~0LLU, ~0LLU}, 129};
-    /*
-    ASSERT_TRUE((T{std::array{~0LLU, ~0LLU, ~0LLU}, 129}).all());
-    ASSERT_TRUE((T{std::array{0LLU, 0LLU, 0LLU}, 129}).none());
-    ASSERT_FALSE((T{std::array{0LLU, 0LLU, 0LLU}, 129}).any());
-    ASSERT_TRUE((T{std::array{1LLU, 0LLU, 0LLU}, 129}).any());
-    ASSERT_EQ((T{std::array{3LLU, 2LLU, 1LLU}, 129}).count(), 4);
-    */
+    bitarray::bitarray<129>{{~0LLU, ~0LLU, ~0LLU}};
+    ASSERT_TRUE((bitarray::bitarray<129>{{~0LLU, ~0LLU, ~0LLU}}).all());
+    ASSERT_TRUE((bitarray::bitarray<129>{{0LLU, 0LLU, 0LLU}}).none());
+    ASSERT_FALSE((bitarray::bitarray<129>{{0LLU, 0LLU, 0LLU}}).any());
+    ASSERT_TRUE((bitarray::bitarray<129>{{1LLU, 0LLU, 0LLU}}).any());
+    ASSERT_EQ((bitarray::bitarray<129>{{3LLU, 2LLU, 1LLU}}).count(), 4);
 }
-#endif
 
 TEST(bitarray, fuzz_count){
     {
@@ -100,7 +122,6 @@ TEST(bitarray, fuzz_count){
     }
 }
 
-#if 0
 TEST(bitarray, fuzz_shift){
     constexpr size_t len = 128;
     for(size_t i = 0; i < len; i++) {
@@ -124,6 +145,7 @@ TEST(bitarray, fuzz_shift){
     }
 }
 
+#if 0
 TEST(bitarray, fuzz_rotate){
     constexpr int len = 128;
     for(int i = -len; i < len; i++) {
