@@ -28,9 +28,7 @@ template <size_t Bits, typename WordType = size_t>
 struct bitarray {
     using self_type = bitarray<Bits, WordType>;
 
-    size_t _size = Bits;
-    using DataType = std::array<WordType, words_needed<WordType>(Bits)>;
-    DataType data{};
+    std::array<WordType, words_needed<WordType>(Bits)> data{};
 
     bitarray() {
         sanitize();
@@ -39,21 +37,10 @@ struct bitarray {
         std::copy(l.begin(), l.begin() + std::min(l.size(), data.size()), data.begin());
         sanitize();
     }
-    bitarray(size_t size): _size(size), data() {
-        if (size > Bits) {
-            throw std::runtime_error("bitarray<x>(y): y > x, use dynamically resizable bitvector instead");
-        }
-        sanitize();
-    }
-    bitarray(size_t size, std::initializer_list<WordType> l) {
-        if (size > Bits) {
-            throw std::runtime_error("bitarray<x>(y): y > x, use dynamically resizable bitvector instead");
-        }
-        std::copy(l.begin(), l.begin() + std::min(l.size(), data.size()), data.begin());
-        sanitize();
-    }
 
+#define BITARRAY_FIXED_SIZE 1
 #include "bitarray-impl.hh"
+#undef BITARRAY_FIXED_SIZE
 //XXX doing this include hack because partial template specialisation doesn't work on template aliases (`using`)
 };
 
@@ -90,6 +77,8 @@ struct bitspan {
         sanitize();
     }
 
+#define BITARRAY_DISABLE_COPIES 1
 #include "bitarray-impl.hh"
+#undef BITARRAY_DISABLE_COPIES
 };
 }

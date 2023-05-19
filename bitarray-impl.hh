@@ -48,21 +48,20 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
+#ifdef BITARRAY_FIXED_SIZE
+        return std::size(data) * WordBits;
+#else
         if (_size == std::dynamic_extent) {
             return std::size(data) * WordBits;
         } else {
             return _size;
         }
+#endif
 #ifndef __clang__
 #pragma GCC diagnostic pop
 #endif
     }
-    /*
-    void resize(size_t s) {
-        //TODO implement partial resize (without underlying container resize)
-        _size = s;
-    }
-    */
+#ifndef BITARRAY_FIXED_SIZE
     void resize(size_t s) {
         size_t needed = words_needed<WordType>(s);
         if (std::size(data) < needed) {
@@ -70,6 +69,7 @@ public:
         }
         _size = s;
     }
+#endif
     bool all() const {
         if (size() % WordBits == 0) {
             for (size_t i = 0; i < std::size(data); i++)
@@ -277,11 +277,13 @@ public:
         }
         return *this;
     }
+#ifndef BITARRAY_DISABLE_COPIES
     self_type operator<<(size_t shift) {
         self_type x = *this;
         x <<= shift;
         return x;
     }
+#endif
     self_type operator>>=(size_t shift) {
         for (size_t i = 0; i < std::size(data); i++) {
             if (shift + i * WordBits < size()) {
@@ -292,11 +294,13 @@ public:
         }
         return *this;
     }
+#ifndef BITARRAY_DISABLE_COPIES
     self_type operator>>(size_t shift) {
         self_type x = *this;
         x >>= shift;
         return x;
     }
+#endif
     self_type rotl(int shift) {
         if (shift < 0) {
             return rotr(-shift);
