@@ -96,8 +96,11 @@ public:
                 return false;
         return true;
     }
-    int count() const {
-        int count = 0;
+    int popcount() const {
+        return count();
+    }
+    size_t count() const {
+        size_t count = 0;
         for (auto& x: data)
             if constexpr (sizeof(WordType) <= 8) {
                 count += std::popcount(x);
@@ -151,7 +154,15 @@ public:
         return *this;
     }
     self_type bit_ceil() const {
-        //TODO
+        int w = bit_width();
+        bool x = has_single_bit();
+        reset();
+        if (x) {
+            set(w - 1);
+        } else {
+            set(w);
+        }
+        return *this;
     }
 
 
