@@ -1,4 +1,12 @@
+static inherit from base with most functionality, derived just has data storage rather than janky include impl, or CRTP?
+and/or range/container adapter
+simd
+inc/dec by find first set and find first zero
+benchmarks versus other libraries
+forget interleave/spread? but expose scatter/gather
+
 bits::bitarray<size, T = size_t> = std::array<T, size>
+    copy, move ctors
     everything implemented
 bits::bitvector<T = size_t> = std::vector<T>
     performance warning copy operators
@@ -11,6 +19,25 @@ they should interoperate
 bitarray op bitvector should work
 easiest if there's a single underlying type
 
+casts between sizes, storage types?
+
+what if two bitvectors have different dynamic sizes?
+zero-extend? one-extend? sign-extend?
+make it the users problem:
+    error if the sizes differ
+virtual zero bits could work?
+    assuming ones are important in most cases
+
 
 
 https://github.com/ClaasBontus/bitset2
+
+fix test suite
+reference type https://en.cppreference.com/w/cpp/utility/bitset/reference
+iterators for for loops?
+
+implement casts between bitarray, bitvector, bitspan
+    std::bitset is not trivially copyable by the standard, but is in practice (big three std libs), use std::bit_cast to cast from/to it
+        see https://quuxplusone.github.io/blog/2019/02/20/p1144-what-types-are-relocatable/
+    pretty much like std::array "This container is an aggregate type with the same semantics as a struct holding a C-style array T[N] as its only non-static data member."
+implement span_cast and array_cast for conversions
